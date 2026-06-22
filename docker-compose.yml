@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  # Servicio principal que incluye Backend + Frontend
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: music-royalty-app
+    ports:
+      - "3000:3000"  # Backend API
+      - "3001:3001"  # Frontend
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - VITE_API_URL=http://localhost:3000/api
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - music-royalty-network
+    restart: unless-stopped
+
+networks:
+  music-royalty-network:
+    driver: bridge
