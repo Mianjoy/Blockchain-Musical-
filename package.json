@@ -1,0 +1,30 @@
+{
+  "name": "music-royalty-blockchain",
+  "version": "1.0.0",
+  "description": "Sistema de regalías musicales basado en Hyperledger Fabric con DDD y principios SOLID",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
+  },
+  "keywords": [
+    "blockchain",
+    "hyperledger",
+    "music",
+    "royalties",
+    "ddd"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "fabric-network": "^2.2.20",
+    "fabric-ca-client": "^2.2.20",
+    "uuid": "^9.0.0",
+    "crypto-js": "^4.1.1"
+  }
+}
