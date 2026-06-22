@@ -2,6 +2,111 @@
 
 Sistema descentralizado para la gestión de regalías musicales utilizando Hyperledger Fabric, siguiendo principios DDD y SOLID.
 
+## 🚀 Ejecución Rápida - Opciones Disponibles
+
+### Opción 1: Docker (Recomendado - Sin instalar dependencias) ⭐
+
+Esta es la forma más fácil y portable. Solo necesitas Docker instalado.
+
+#### Paso 1: Verificar que Docker está instalado
+```bash
+docker --version
+docker compose version
+```
+
+Si no tienes Docker instalado:
+- **Windows/Mac**: Descarga Docker Desktop desde https://www.docker.com/products/docker-desktop/
+- **Linux**: `curl -fsSL https://get.docker.com | sh`
+
+#### Paso 2: Clonar o descargar el repositorio
+```bash
+git clone https://github.com/Mianjoy/Blockchain-Musical-.git
+cd Blockchain-Musical-
+```
+
+#### Paso 3: Ejecutar el sistema completo
+```bash
+docker compose up --build
+```
+
+#### Paso 4: Acceder al sistema
+- **Frontend (Interfaz Gráfica)**: http://localhost:3001
+- **Backend API**: http://localhost:3000/api
+- **Health Check**: http://localhost:3000/health
+
+#### Detener el sistema
+```bash
+docker compose down
+```
+
+---
+
+### Opción 2: Script Portable Automático (Windows, Mac, Linux)
+
+Se ha incluido un script que automatiza todo el proceso:
+
+#### Windows:
+```bash
+run-system.bat
+```
+
+#### Mac/Linux:
+```bash
+chmod +x run-system.sh
+./run-system.sh
+```
+
+El script:
+1. Verifica si Docker está instalado
+2. Si no está Docker, te guía para instalarlo
+3. Construye y ejecuta el sistema automáticamente
+4. Abre el navegador en la interfaz gráfica
+
+---
+
+### Opción 3: Instalación Manual (Solo Desarrollo)
+
+#### Requisitos previos:
+- Node.js 18+ (https://nodejs.org/)
+- npm o yarn
+- Hyperledger Fabric (opcional, el sistema incluye modo simulación)
+
+#### Paso 1: Instalar dependencias del backend
+```bash
+npm install
+```
+
+#### Paso 2: Instalar dependencias del frontend
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+#### Paso 3: Configurar variables de entorno (opcional)
+Crear archivo `.env`:
+```
+PORT=3000
+NODE_ENV=development
+VITE_API_URL=http://localhost:3000/api
+```
+
+#### Paso 4: Iniciar el backend
+```bash
+npm start
+```
+
+#### Paso 5: En otra terminal, iniciar el frontend
+```bash
+cd frontend
+npm run dev
+```
+
+#### Paso 6: Acceder
+- Frontend: http://localhost:5173 (o el puerto que indique Vite)
+- Backend: http://localhost:3000
+
+
 ## Arquitectura del Sistema
 
 El sistema sigue una arquitectura en capas basada en Domain-Driven Design (DDD):
