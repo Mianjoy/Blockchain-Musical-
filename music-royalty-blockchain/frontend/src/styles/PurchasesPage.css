@@ -1,0 +1,187 @@
+/* Purchases Page Styles */
+.purchases-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.purchases-page h1 {
+  text-align: center;
+  color: #333;
+  font-size: 2rem;
+  margin-bottom: 2rem;
+}
+
+.loading,
+.empty-message {
+  text-align: center;
+  color: #666;
+  font-size: 1.2rem;
+  padding: 3rem;
+}
+
+.purchases-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.purchase-card {
+  background: white;
+  border-radius: 15px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.purchase-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+.purchase-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.song-icon {
+  font-size: 3rem;
+}
+
+.purchase-info {
+  flex: 1;
+}
+
+.purchase-info h3 {
+  color: #333;
+  font-size: 1.3rem;
+  margin: 0 0 0.25rem 0;
+}
+
+.purchase-info .artist {
+  color: #666;
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.purchase-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 10px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.detail-item label {
+  font-size: 0.85rem;
+  color: #666;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.detail-item span {
+  font-size: 1rem;
+  color: #333;
+  font-weight: 500;
+}
+
+.access-key-section {
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 10px;
+}
+
+.access-key-section label {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: #666;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.access-key-display {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.access-key-display code {
+  flex: 1;
+  font-family: 'Courier New', monospace;
+  font-size: 1rem;
+  color: #333;
+  font-weight: 600;
+  background: white;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+.btn-toggle-key,
+.btn-copy-small {
+  padding: 0.5rem 0.75rem;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.btn-toggle-key:hover,
+.btn-copy-small:hover {
+  background: #5568d3;
+  transform: scale(1.05);
+}
+
+.btn-download-purchase {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #00b894 0%, #00a885 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 184, 148, 0.3);
+}
+
+.btn-download-purchase:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 184, 148, 0.4);
+}
+
+@media (max-width: 768px) {
+  .purchase-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .purchase-details {
+    grid-template-columns: 1fr;
+  }
+
+  .access-key-display {
+    flex-direction: column;
+  }
+
+  .btn-toggle-key,
+  .btn-copy-small {
+    width: 100%;
+  }
+}
