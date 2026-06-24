@@ -11,12 +11,13 @@ services:
       - "3000:3000"  # Backend API
       - "3001:3001"  # Frontend
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=development
       - PORT=3000
       - VITE_API_URL=http://localhost:3000/api
     volumes:
       - .:/app
       - /app/node_modules
+      - /app/frontend/node_modules
     networks:
       - music-royalty-network
     restart: unless-stopped
