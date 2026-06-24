@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # Servicio principal que incluye Backend + Frontend
+  # Servicio principal que incluye Backend + Frontend optimizado para red local
   app:
     build:
       context: .
@@ -13,14 +13,21 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3000
+      # Escuchar en todas las interfaces para acceso desde otras PCs en la red
+      - HOST=0.0.0.0
+      # URL interna para comunicación entre contenedores
       - VITE_API_URL=http://localhost:3000/api
     volumes:
       - .:/app
       - /app/node_modules
       - /app/frontend/node_modules
+      - blockchain_data:/app/data  # Persistencia de datos blockchain
     networks:
       - music-royalty-network
     restart: unless-stopped
+
+volumes:
+  blockchain_data:
 
 networks:
   music-royalty-network:
