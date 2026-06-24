@@ -1,0 +1,263 @@
+.song-detail-page {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.btn-back {
+  background: none;
+  border: none;
+  color: #667eea;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0.5rem 0;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  transition: color 0.3s ease;
+}
+
+.btn-back:hover {
+  color: #764ba2;
+}
+
+.song-detail-container {
+  background: white;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.song-detail-header {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+  padding: 2rem;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.detail-cover {
+  width: 100%;
+  height: 350px;
+  object-fit: cover;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.detail-info h1 {
+  margin: 0 0 0.5rem;
+  font-size: 2rem;
+  color: #333;
+}
+
+.detail-artist {
+  font-size: 1.2rem;
+  color: #666;
+  margin: 0 0 1rem;
+}
+
+.detail-meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.genre-badge {
+  background: #667eea;
+  color: white;
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+.price-large {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.detail-description {
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 1.5rem;
+}
+
+.btn-purchase {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-purchase:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-purchase:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.purchased-badge {
+  background: #d4edda;
+  color: #155724;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+  font-weight: 600;
+  border: 2px solid #28a745;
+}
+
+.access-key-section {
+  background: #fff3cd;
+  padding: 1.5rem;
+  border-radius: 8px;
+  margin-top: 1.5rem;
+  border: 2px solid #ffc107;
+}
+
+.access-key-section h3 {
+  margin: 0 0 1rem;
+  color: #856404;
+}
+
+.key-display {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.key-display code {
+  flex: 1;
+  background: white;
+  padding: 0.75rem;
+  border-radius: 5px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.95rem;
+  border: 2px solid #dee2e6;
+  word-break: break-all;
+}
+
+.btn-copy {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.btn-download {
+  display: block;
+  text-align: center;
+  background: #28a745;
+  color: white;
+  padding: 1rem;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 700;
+  transition: background 0.3s ease;
+}
+
+.btn-download:hover {
+  background: #218838;
+}
+
+.participants-section-detail {
+  padding: 2rem;
+  border-top: 2px solid #e9ecef;
+}
+
+.participants-section-detail h2 {
+  margin: 0 0 0.5rem;
+  color: #333;
+}
+
+.participants-section-detail h3 {
+  margin: 0 0 1.5rem;
+  color: #666;
+  font-weight: 500;
+}
+
+.participants-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.participant-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #667eea;
+}
+
+.participant-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.participant-info strong {
+  color: #333;
+  font-size: 1rem;
+}
+
+.participant-role {
+  color: #666;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.participant-percentage {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.loading {
+  text-align: center;
+  padding: 4rem;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+@media (max-width: 768px) {
+  .song-detail-header {
+    grid-template-columns: 1fr;
+  }
+
+  .detail-cover {
+    height: 250px;
+  }
+
+  .detail-info h1 {
+    font-size: 1.5rem;
+  }
+
+  .detail-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .key-display {
+    flex-direction: column;
+  }
+
+  .participant-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
