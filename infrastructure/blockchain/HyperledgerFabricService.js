@@ -8,8 +8,8 @@ const ClaveAcceso = require('../../domain/value-objects/ClaveAcceso');
 const IBlockchainService = require('../../domain/interfaces/IBlockchainService');
 
 /**
- * Implementación del servicio de blockchain usando Hyperledger Fabric
- * Sigue el principio de responsabilidad única (SRP) y DIP
+ * Servicio Hyperledger Fabric.
+ * Modo simulación SOLO si ALLOW_SIMULATION=true o config.allowSimulation=true.
  */
 class HyperledgerFabricService extends IBlockchainService {
   constructor(config = {}) {
@@ -17,180 +17,249 @@ class HyperledgerFabricService extends IBlockchainService {
     this.config = {
       walletPath: config.walletPath || path.join(__dirname, '../../../wallet'),
       connectionProfile: config.connectionProfile || path.join(__dirname, '../../../connection.json'),
-      channelName: config.channelName || 'mychannel',
-      chaincodeName: config.chaincodeName || 'music-royalty',
-      mspId: config.mspId || 'Org1MSP'
+      channelName: config.channelName || process.env.CHANNEL_NAME || 'mychannel',
+      chaincodeName: config.chaincodeName || process.env.CHAINCODE_NAME || 'music-royalty',
+      mspId: config.mspId || 'Org1MSP',
+      identity: config.identity || 'appUser',
+      allowSimulation:
+        config.allowSimulation === true ||
+        process.env.ALLOW_SIMULATION === 'true' ||
+        process.env.MODO_SIMULACION === 'true'
     };
     this.gateway = null;
     this.network = null;
     this.contract = null;
+    this._modoSimulacion = false;
     this._claveCache = new Map();
+    this._simStore = {
+      canciones: new Map(),
+      contratos: new Map(),
+      contratosPorCancion: new Map(),
+      claves: new Map()
+    };
   }
 
-  /**
-   * Inicializa la conexión con Hyperledger Fabric
-   */
+  get enSimulacion() {
+    return this._modoSimulacion;
+  }
+
   async inicializar() {
+    if (this.config.allowSimulation && process.env.FORCE_FABRIC !== 'true') {
+      // Solo entra en simulación directa si se fuerza por env sin intentar Fabric,
+      // excepto cuando ALLOW_SIMULATION está activo como fallback tras error.
+    }
+
+    const connectionPath = this.config.connectionProfile;
+    if (!fs.existsSync(connectionPath)) {
+      return this._activarSimulacionOFallar(
+        `No existe connection.json en ${connectionPath}. Ejecuta start-system.bat o network/scripts/network.sh up`
+      );
+    }
+
     try {
-      // Crear wallet
       const wallet = await Wallets.newFileSystemWallet(this.config.walletPath);
-      
-      // Configurar gateway
+      const identity = await wallet.get(this.config.identity);
+      if (!identity) {
+        throw new Error(
+          `Identidad '${this.config.identity}' no encontrada en wallet. Ejecuta: node scripts/enrollAppUser.js`
+        );
+      }
+
+      const ccp = JSON.parse(fs.readFileSync(connectionPath, 'utf8'));
       this.gateway = new Gateway();
-      await this.gateway.connect(this.config.connectionProfile, {
+      await this.gateway.connect(ccp, {
         wallet,
-        identity: 'appUser',
+        identity: this.config.identity,
         discovery: { enabled: true, asLocalhost: true }
       });
 
-      // Conectar al canal y contrato
       this.network = await this.gateway.getNetwork(this.config.channelName);
       this.contract = this.network.getContract(this.config.chaincodeName);
+      this._modoSimulacion = false;
 
       console.log('Conexión a Hyperledger Fabric establecida correctamente');
+      console.log(`  Canal: ${this.config.channelName}`);
+      console.log(`  Chaincode: ${this.config.chaincodeName}`);
       return true;
     } catch (error) {
       console.error('Error inicializando Hyperledger Fabric:', error.message);
-      // En modo desarrollo/testing, permitir operación sin blockchain real
-      this._modoSimulacion = true;
-      console.log('Operando en modo simulación');
-      return false;
+      return this._activarSimulacionOFallar(error.message);
     }
   }
 
-  /**
-   * Registra una canción en la blockchain
-   */
+  _activarSimulacionOFallar(motivo) {
+    if (this.config.allowSimulation) {
+      this._modoSimulacion = true;
+      console.warn(`[SIMULACIÓN] Activada porque ALLOW_SIMULATION=true. Motivo: ${motivo}`);
+      return false;
+    }
+    throw new Error(
+      `No se pudo conectar a Hyperledger Fabric y la simulación está desactivada. ${motivo}. ` +
+        `Para forzar simulación: ALLOW_SIMULATION=true`
+    );
+  }
+
   async registrarCancion(cancion) {
     if (!(cancion instanceof Cancion)) {
       throw new Error('El objeto debe ser una instancia de Cancion');
     }
 
+    const cancionData = JSON.stringify(cancion.toPlainObject());
+
     if (this._modoSimulacion) {
+      this._simStore.canciones.set(cancion.id, cancion.toPlainObject());
       console.log('[SIMULACIÓN] Registrando canción:', cancion.id);
       return true;
     }
 
-    try {
-      const cancionData = JSON.stringify(cancion.toPlainObject());
-      await this.contract.submitTransaction('crearCancion', cancionData);
-      console.log('Canción registrada en blockchain:', cancion.id);
-      return true;
-    } catch (error) {
-      console.error('Error registrando canción:', error.message);
-      throw error;
-    }
+    await this.contract.submitTransaction('crearCancion', cancionData);
+    console.log('Canción registrada en blockchain:', cancion.id);
+    return true;
   }
 
-  /**
-   * Registra un contrato en la blockchain
-   */
+  async actualizarCancion(cancion) {
+    if (!(cancion instanceof Cancion)) {
+      throw new Error('El objeto debe ser una instancia de Cancion');
+    }
+
+    const cancionData = JSON.stringify(cancion.toPlainObject());
+
+    if (this._modoSimulacion) {
+      this._simStore.canciones.set(cancion.id, cancion.toPlainObject());
+      return true;
+    }
+
+    await this.contract.submitTransaction('actualizarCancion', cancionData);
+    return true;
+  }
+
   async registrarContrato(contrato) {
     if (!(contrato instanceof Contrato)) {
       throw new Error('El objeto debe ser una instancia de Contrato');
     }
 
+    const contratoData = JSON.stringify(contrato.toPlainObject());
+
     if (this._modoSimulacion) {
+      const plain = contrato.toPlainObject();
+      this._simStore.contratos.set(contrato.id, plain);
+      this._simStore.contratosPorCancion.set(contrato.cancionId, contrato.id);
       console.log('[SIMULACIÓN] Registrando contrato:', contrato.id);
       return true;
     }
 
-    try {
-      const contratoData = JSON.stringify(contrato.toPlainObject());
-      await this.contract.submitTransaction('crearContrato', contratoData);
-      console.log('Contrato registrado en blockchain:', contrato.id);
-      return true;
-    } catch (error) {
-      console.error('Error registrando contrato:', error.message);
-      throw error;
-    }
+    await this.contract.submitTransaction('crearContrato', contratoData);
+    console.log('Contrato registrado en blockchain:', contrato.id);
+    return true;
   }
 
-  /**
-   * Registra una transacción en la blockchain
-   */
+  async actualizarContrato(contrato) {
+    if (!(contrato instanceof Contrato)) {
+      throw new Error('El objeto debe ser una instancia de Contrato');
+    }
+
+    const contratoData = JSON.stringify(contrato.toPlainObject());
+
+    if (this._modoSimulacion) {
+      const plain = contrato.toPlainObject();
+      this._simStore.contratos.set(contrato.id, plain);
+      this._simStore.contratosPorCancion.set(contrato.cancionId, contrato.id);
+      return true;
+    }
+
+    await this.contract.submitTransaction('actualizarContrato', contratoData);
+    return true;
+  }
+
   async registrarTransaccion(transaccion) {
     if (!(transaccion instanceof Transaccion)) {
       throw new Error('El objeto debe ser una instancia de Transaccion');
     }
+
+    const transaccionData = JSON.stringify(transaccion.toPlainObject());
 
     if (this._modoSimulacion) {
       console.log('[SIMULACIÓN] Registrando transacción:', transaccion.id);
       return true;
     }
 
-    try {
-      const transaccionData = JSON.stringify(transaccion.toPlainObject());
-      await this.contract.submitTransaction('registrarTransaccion', transaccionData);
-      console.log('Transacción registrada en blockchain:', transaccion.id);
-      return true;
-    } catch (error) {
-      console.error('Error registrando transacción:', error.message);
-      throw error;
-    }
+    await this.contract.submitTransaction('registrarTransaccion', transaccionData);
+    console.log('Transacción registrada en blockchain:', transaccion.id);
+    return true;
   }
 
-  /**
-   * Obtiene una canción desde la blockchain
-   */
   async obtenerCancion(id) {
     if (this._modoSimulacion) {
-      console.log('[SIMULACIÓN] Obteniendo canción:', id);
-      return null;
+      return this._simStore.canciones.get(id) || null;
     }
 
     try {
       const result = await this.contract.evaluateTransaction('obtenerCancion', id);
-      const cancionData = JSON.parse(result.toString());
-      return cancionData;
+      return JSON.parse(result.toString());
     } catch (error) {
       console.error('Error obteniendo canción:', error.message);
       return null;
     }
   }
 
-  /**
-   * Obtiene un contrato desde la blockchain
-   */
+  async obtenerTodasLasCanciones() {
+    if (this._modoSimulacion) {
+      return Array.from(this._simStore.canciones.values());
+    }
+
+    try {
+      const result = await this.contract.evaluateTransaction('consultarTodasLasCanciones');
+      return JSON.parse(result.toString());
+    } catch (error) {
+      console.error('Error listando canciones:', error.message);
+      return [];
+    }
+  }
+
   async obtenerContrato(id) {
     if (this._modoSimulacion) {
-      console.log('[SIMULACIÓN] Obteniendo contrato:', id);
-      return null;
+      return this._simStore.contratos.get(id) || null;
     }
 
     try {
       const result = await this.contract.evaluateTransaction('obtenerContrato', id);
-      const contratoData = JSON.parse(result.toString());
-      return contratoData;
+      return JSON.parse(result.toString());
     } catch (error) {
       console.error('Error obteniendo contrato:', error.message);
       return null;
     }
   }
 
-  /**
-   * Genera una clave de acceso para una canción
-   */
-  async generarClaveAcceso(cancionId) {
-    const clave = ClaveAcceso.generar(cancionId);
-    
-    if (!this._modoSimulacion) {
-      try {
-        await this.contract.submitTransaction('generarClaveAcceso', cancionId, clave.valor);
-      } catch (error) {
-        console.error('Error generando clave en blockchain:', error.message);
-      }
+  async obtenerContratoPorCancion(cancionId) {
+    if (this._modoSimulacion) {
+      const contratoId = this._simStore.contratosPorCancion.get(cancionId);
+      return contratoId ? this._simStore.contratos.get(contratoId) || null : null;
     }
 
+    try {
+      const result = await this.contract.evaluateTransaction('obtenerContratoPorCancion', cancionId);
+      return JSON.parse(result.toString());
+    } catch (error) {
+      console.error('Error obteniendo contrato por canción:', error.message);
+      return null;
+    }
+  }
+
+  async generarClaveAcceso(cancionId) {
+    const clave = ClaveAcceso.generar(cancionId);
+
+    if (this._modoSimulacion) {
+      this._simStore.claves.set(cancionId, clave.valor);
+      this._claveCache.set(cancionId, clave);
+      return clave;
+    }
+
+    await this.contract.submitTransaction('generarClaveAcceso', cancionId, clave.valor);
     this._claveCache.set(cancionId, clave);
     return clave;
   }
 
-  /**
-   * Valida una clave de acceso
-   */
   async validarClaveAcceso(cancionId, clave) {
-    // Verificar en cache local primero
     if (this._claveCache.has(cancionId)) {
       const claveGuardada = this._claveCache.get(cancionId);
       if (claveGuardada.validar(clave)) {
@@ -199,26 +268,23 @@ class HyperledgerFabricService extends IBlockchainService {
       }
     }
 
-    // Verificar en blockchain
-    if (!this._modoSimulacion) {
-      try {
-        const result = await this.contract.evaluateTransaction('validarClaveAcceso', cancionId, clave);
-        return result.toString() === 'true';
-      } catch (error) {
-        console.error('Error validando clave:', error.message);
-        return false;
-      }
+    if (this._modoSimulacion) {
+      return this._simStore.claves.get(cancionId) === clave;
     }
 
-    return false;
+    try {
+      const result = await this.contract.evaluateTransaction('validarClaveAcceso', cancionId, clave);
+      const parsed = JSON.parse(result.toString());
+      return parsed.valido === true;
+    } catch (error) {
+      console.error('Error validando clave:', error.message);
+      return false;
+    }
   }
 
-  /**
-   * Cierra la conexión con la blockchain
-   */
   async desconectar() {
     if (this.gateway) {
-      await this.gateway.disconnect();
+      this.gateway.disconnect();
       console.log('Conexión con blockchain cerrada');
     }
   }

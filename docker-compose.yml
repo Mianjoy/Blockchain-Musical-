@@ -1,34 +1,46 @@
 version: '3.8'
 
+# Compose de la aplicación (API + frontend).
+# La red Fabric se levanta aparte con network/docker-compose-net.yaml
+# vía start-system.bat / network/scripts/network.sh
+
 services:
-  # Servicio principal que incluye Backend + Frontend optimizado para red local
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: music-royalty-app
     ports:
-      - "3000:3000"  # Backend API
-      - "3001:3001"  # Frontend
+      - "3000:3000"
+      - "3001:3001"
     environment:
       - NODE_ENV=development
       - PORT=3000
-      # Escuchar en todas las interfaces para acceso desde otras PCs en la red
       - HOST=0.0.0.0
-      # URL interna para comunicación entre contenedores
+      - CHANNEL_NAME=mychannel
+      - CHAINCODE_NAME=music-royalty
+      # Por defecto NO simula: la app en contenedor necesita connection.json apuntando a la red Docker
+      - ALLOW_SIMULATION=${ALLOW_SIMULATION:-false}
       - VITE_API_URL=http://localhost:3000/api
     volumes:
       - .:/app
       - /app/node_modules
       - /app/frontend/node_modules
-      - blockchain_data:/app/data  # Persistencia de datos blockchain
+      - ./wallet:/app/wallet
+      - ./connection.json:/app/connection.json
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "peer0.org1.example.com:host-gateway"
+      - "orderer.example.com:host-gateway"
+      - "ca.org1.example.com:host-gateway"
     networks:
       - music-royalty-network
+      - music-royalty-fabric
     restart: unless-stopped
-
-volumes:
-  blockchain_data:
 
 networks:
   music-royalty-network:
     driver: bridge
+  music-royalty-fabric:
+    external: true
+    name: music-royalty-fabric

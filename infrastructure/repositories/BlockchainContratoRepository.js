@@ -2,7 +2,7 @@ const Contrato = require('../../domain/entities/Contrato');
 const IContratoRepository = require('../../domain/interfaces/IContratoRepository');
 
 /**
- * Implementación del repositorio de contratos usando Hyperledger Fabric
+ * Repositorio de contratos respaldado por Hyperledger Fabric (+ cache local)
  */
 class BlockchainContratoRepository extends IContratoRepository {
   constructor(blockchainService) {
@@ -16,12 +16,7 @@ class BlockchainContratoRepository extends IContratoRepository {
       throw new Error('El objeto debe ser una instancia de Contrato');
     }
 
-    // Guardar en cache local
     this._cache.set(contrato.id, contrato);
-
-    // Registrar en blockchain
-    await this.blockchainService.registrarContrato(contrato);
-
     return contrato;
   }
 
@@ -45,21 +40,20 @@ class BlockchainContratoRepository extends IContratoRepository {
   }
 
   async obtenerPorCancionId(cancionId) {
-    // Buscar en cache por cancionId
-    for (const [key, value] of this._cache.entries()) {
+    for (const value of this._cache.values()) {
       if (value.cancionId === cancionId) {
         return value;
       }
     }
 
-    // Intentar obtener de blockchain (se asume que hay un método para esto)
     try {
-      const contratos = await this.obtenerTodos();
-      const contrato = contratos.find(c => c.cancionId === cancionId);
-      if (contrato) {
-        const contratoEntity = Contrato.fromPlainObject(contrato);
-        this._cache.set(contrato.id, contratoEntity);
-        return contratoEntity;
+      if (typeof this.blockchainService.obtenerContratoPorCancion === 'function') {
+        const contratoData = await this.blockchainService.obtenerContratoPorCancion(cancionId);
+        if (contratoData) {
+          const contrato = Contrato.fromPlainObject(contratoData);
+          this._cache.set(contrato.id, contrato);
+          return contrato;
+        }
       }
     } catch (error) {
       console.error(`Error obteniendo contrato por canción ${cancionId}:`, error.message);
@@ -69,7 +63,7 @@ class BlockchainContratoRepository extends IContratoRepository {
   }
 
   async obtenerTodos() {
-    return Array.from(this._cache.values()).map(c => c.toPlainObject());
+    return Array.from(this._cache.values()).map((c) => c.toPlainObject());
   }
 
   async actualizar(contrato) {
@@ -77,12 +71,8 @@ class BlockchainContratoRepository extends IContratoRepository {
       throw new Error('El objeto debe ser una instancia de Contrato');
     }
 
-    // Actualizar en cache
+    // Cache local; la escritura en ledger de transacciones se hace vía registrarTransaccion
     this._cache.set(contrato.id, contrato);
-
-    // Actualizar en blockchain
-    await this.blockchainService.registrarContrato(contrato);
-
     return contrato;
   }
 }

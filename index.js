@@ -1,20 +1,19 @@
-/**
- * Punto de entrada principal de la aplicación
- */
 const MusicRoyaltyAPI = require('./api/MusicRoyaltyAPI');
 
 async function main() {
   try {
     console.log('=== Sistema de Regalías Musicales con Blockchain ===\n');
 
-    // Crear y inicializar API
+    const allowSimulation =
+      process.env.ALLOW_SIMULATION === 'true' || process.env.MODO_SIMULACION === 'true';
+
     const api = new MusicRoyaltyAPI();
     await api.inicializar({
-      channelName: 'mychannel',
-      chaincodeName: 'music-royalty'
+      channelName: process.env.CHANNEL_NAME || 'mychannel',
+      chaincodeName: process.env.CHAINCODE_NAME || 'music-royalty',
+      allowSimulation
     });
 
-    // Iniciar servidor
     await api.iniciar();
 
     console.log('\nSistema listo para recibir peticiones');
@@ -24,9 +23,16 @@ async function main() {
     console.log('  GET    /api/canciones/:id    - Obtener canción');
     console.log('  POST   /api/compras          - Registrar compra');
     console.log('  GET    /api/descargar/:id    - Obtener clave de descarga');
+    console.log('  GET    /api/analytics/regalias - Reportes de regalías');
+    console.log('  GET    /api/notificaciones   - Notificaciones');
     console.log('  GET    /health               - Verificar estado\n');
 
-    // Manejar cierre graceful
+    if (allowSimulation) {
+      console.log('ALLOW_SIMULATION=true (fallback a simulación permitido)\n');
+    } else {
+      console.log('Modo Fabric estricto (sin simulación silenciosa)\n');
+    }
+
     process.on('SIGINT', async () => {
       console.log('\nCerrando sistema...');
       await api.cerrar();
@@ -38,12 +44,10 @@ async function main() {
       await api.cerrar();
       process.exit(0);
     });
-
   } catch (error) {
-    console.error('Error fatal:', error);
+    console.error('Error fatal:', error.message || error);
     process.exit(1);
   }
 }
 
-// Ejecutar aplicación
 main();

@@ -1,10 +1,8 @@
 const Cancion = require('../../domain/entities/Cancion');
-const Contrato = require('../../domain/entities/Contrato');
 const ICancionRepository = require('../../domain/interfaces/ICancionRepository');
 
 /**
- * Implementación del repositorio de canciones usando Hyperledger Fabric
- * Sigue el principio de inversión de dependencias (DIP)
+ * Repositorio de canciones respaldado por Hyperledger Fabric (+ cache local)
  */
 class BlockchainCancionRepository extends ICancionRepository {
   constructor(blockchainService) {
@@ -14,29 +12,26 @@ class BlockchainCancionRepository extends ICancionRepository {
   }
 
   async guardar(cancion) {
-    // Validar que la canción sea una instancia válida
     if (!(cancion instanceof Cancion)) {
       throw new Error('El objeto debe ser una instancia de Cancion');
     }
 
-    // Guardar en cache local
     this._cache.set(cancion.id, cancion);
-
-    // La persistencia real se hace a través del servicio de blockchain
     return cancion;
   }
 
   async obtenerPorId(id) {
-    // Intentar obtener del cache
     if (this._cache.has(id)) {
       return this._cache.get(id);
     }
 
-    // Intentar obtener de blockchain
     try {
       const cancionData = await this.blockchainService.obtenerCancion(id);
       if (cancionData) {
         const cancion = Cancion.fromPlainObject(cancionData);
+        if (cancionData.claveAcceso) {
+          cancion._claveAcceso = cancionData.claveAcceso;
+        }
         this._cache.set(id, cancion);
         return cancion;
       }
@@ -48,8 +43,22 @@ class BlockchainCancionRepository extends ICancionRepository {
   }
 
   async obtenerTodas() {
-    // Devolver todas las canciones en cache
-    return Array.from(this._cache.values()).map(c => c.toPlainObject());
+    try {
+      const fromChain = await this.blockchainService.obtenerTodasLasCanciones();
+      if (Array.isArray(fromChain) && fromChain.length > 0) {
+        for (const item of fromChain) {
+          const entity = Cancion.fromPlainObject(item);
+          if (item.claveAcceso) {
+            entity._claveAcceso = item.claveAcceso;
+          }
+          this._cache.set(entity.id, entity);
+        }
+      }
+    } catch (error) {
+      console.error('Error listando canciones desde blockchain:', error.message);
+    }
+
+    return Array.from(this._cache.values()).map((c) => c.toPlainObject());
   }
 
   async actualizar(cancion) {
@@ -57,12 +66,7 @@ class BlockchainCancionRepository extends ICancionRepository {
       throw new Error('El objeto debe ser una instancia de Cancion');
     }
 
-    // Actualizar en cache
     this._cache.set(cancion.id, cancion);
-
-    // Actualizar en blockchain
-    await this.blockchainService.registrarCancion(cancion);
-
     return cancion;
   }
 
@@ -75,7 +79,6 @@ class BlockchainCancionRepository extends ICancionRepository {
     cancion.desactivar();
     await this.actualizar(cancion);
     this._cache.delete(id);
-
     return true;
   }
 }
