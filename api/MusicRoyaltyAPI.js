@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const DIContainer = require('./DIContainer');
 
 /**
@@ -10,8 +11,10 @@ class MusicRoyaltyAPI {
     this.app = express();
     this.container = null;
     this.port = process.env.PORT || 3000;
+    this.host = process.env.HOST || '0.0.0.0';
 
     // Middleware
+    this.app.use(cors());
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
 
@@ -28,7 +31,17 @@ class MusicRoyaltyAPI {
   configurarRutas() {
     // Ruta de salud
     this.app.get('/health', (req, res) => {
-      res.json({ status: 'ok', timestamp: new Date().toISOString() });
+      const blockchain = this.container ? this.container.getBlockchainService() : null;
+      res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        fabric: {
+          connected: !!(blockchain && !blockchain.enSimulacion),
+          simulation: !!(blockchain && blockchain.enSimulacion),
+          channel: process.env.CHANNEL_NAME || 'mychannel',
+          chaincode: process.env.CHAINCODE_NAME || 'music-royalty'
+        }
+      });
     });
 
     // Rutas de canciones
@@ -59,8 +72,8 @@ class MusicRoyaltyAPI {
    */
   iniciar() {
     return new Promise((resolve, reject) => {
-      const server = this.app.listen(this.port, () => {
-        console.log(`Servidor corriendo en puerto ${this.port}`);
+      const server = this.app.listen(this.port, this.host, () => {
+        console.log(`Servidor corriendo en http://${this.host}:${this.port}`);
         resolve(server);
       });
 

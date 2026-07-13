@@ -1,6 +1,25 @@
 import axios from 'axios';
 
-const API_BASE_URL = '/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+
+function mapCancionFromApi(c) {
+  if (!c) return null;
+  return {
+    id: c.id,
+    blockchainId: c.id,
+    title: c.titulo || c.title,
+    artist: c.artista || c.artist,
+    url: c.linkArchivo || c.url,
+    price: c.precio || c.price || 1,
+    participants: (c.participantes || c.participants || []).map((p) => ({
+      name: p.nombre || p.name,
+      role: p.rol || p.role,
+      percentage: p.porcentaje || p.percentage
+    })),
+    claveAcceso: c.claveAcceso,
+    activa: c.activa
+  };
+}
 
 class ApiService {
   constructor() {
@@ -14,34 +33,49 @@ class ApiService {
 
   async getCanciones() {
     const response = await this.api.get('/canciones');
-    return response.data;
+    const list = response.data?.datos || response.data || [];
+    return Array.isArray(list) ? list.map(mapCancionFromApi) : [];
   }
 
   async getCancionById(id) {
     const response = await this.api.get(`/canciones/${id}`);
-    return response.data;
+    return mapCancionFromApi(response.data?.datos || response.data);
   }
 
   async crearCancion(cancionData) {
-    const response = await this.api.post('/canciones', cancionData);
+    const payload = {
+      titulo: cancionData.title || cancionData.titulo,
+      artista: cancionData.artist || cancionData.artista,
+      linkArchivo: cancionData.url || cancionData.linkArchivo,
+      participantes: (cancionData.participants || cancionData.participantes || []).map((p) => ({
+        nombre: p.name || p.nombre,
+        rol: p.role || p.rol,
+        porcentaje: Number(p.percentage ?? p.porcentaje)
+      })),
+      usuarioId: cancionData.usuarioId || 'artista_local'
+    };
+
+    const response = await this.api.post('/canciones', payload);
     return response.data;
   }
 
-  async comprarCancion(cancionId, compradorId) {
+  async comprarCancion(cancionId, compradorId, monto = 1) {
     const response = await this.api.post('/compras', {
       cancionId,
-      compradorId
+      compradorId,
+      monto: Number(monto)
     });
     return response.data;
   }
 
-  async getComprasByUsuario(usuarioId) {
-    const response = await this.api.get(`/compras/usuario/${usuarioId}`);
+  async obtenerClaveAcceso(cancionId) {
+    const response = await this.api.get(`/descargar/${cancionId}`);
     return response.data;
   }
 
-  async obtenerClaveAcceso(compraId) {
-    const response = await this.api.get(`/compras/${compraId}/clave`);
+  async health() {
+    const base = API_BASE_URL.replace(/\/api\/?$/, '');
+    const response = await axios.get(`${base || ''}/health`);
     return response.data;
   }
 }

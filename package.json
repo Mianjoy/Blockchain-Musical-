@@ -6,6 +6,10 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node index.js",
+    "fabric:up": "bash network/scripts/network.sh up",
+    "fabric:down": "bash network/scripts/network.sh down",
+    "fabric:clean": "bash network/scripts/network.sh clean",
+    "fabric:enroll": "node scripts/enrollAppUser.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "docker:build": "docker compose build",
     "docker:up": "docker compose up",
@@ -22,8 +26,10 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "fabric-network": "^2.2.20",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
     "fabric-ca-client": "^2.2.20",
+    "fabric-network": "^2.2.20",
     "uuid": "^9.0.0",
     "crypto-js": "^4.1.1"
   }

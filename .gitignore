@@ -1,1 +1,22 @@
-Nothing needs to be added to .gitignore since only a README.md file was modified and no build artifacts, dependencies, or temporary files were detected in the changes.
+node_modules/
+frontend/node_modules/
+chaincode/music-royalty/node_modules/
+.env
+.DS_Store
+*.log
+
+# Hyperledger Fabric generated artifacts
+wallet/*
+!wallet/.gitkeep
+connection.json
+network/organizations/peerOrganizations/
+network/organizations/ordererOrganizations/
+network/organizations/fabric-ca/
+network/channel-artifacts/
+network/system-genesis-block/
+network/**/*.tar.gz
+network/**/music-royalty.tar.gz
+
+# IDE
+.idea/
+.vscode/

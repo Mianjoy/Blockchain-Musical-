@@ -15,89 +15,67 @@ Sistema descentralizado para la gestión de regalías musicales utilizando Hyper
 
 ---
 
-## 🚀 Ejecución Rápida - Opciones Disponibles
+## 🚀 Ejecución Rápida — con Hyperledger Fabric real
 
-### ⭐ Opción 1: Docker (Recomendado - Sin instalar dependencias)
+Requisitos: **Docker Desktop**, **Node.js 18+**, y en Windows **Git Bash** (o WSL).
 
-Esta es la forma más fácil y portable. Solo necesitas Docker instalado.
+### ⭐ Windows (recomendado)
 
-#### Paso 1: Verificar que Docker está instalado
-```bash
-docker --version
-docker compose version
+**1. Instalar dependencias** (asistente interactivo):
+
+```bat
+install-dependencies.bat
 ```
 
-Si no tienes Docker instalado:
-- **Windows/Mac**: Descarga Docker Desktop desde https://www.docker.com/products/docker-desktop/
-- **Linux**: `curl -fsSL https://get.docker.com | sh`
+Comprueba e intenta instalar Node.js, Git Bash y Docker (vía `winget` si está disponible), luego ejecuta `npm install` en backend, frontend y chaincode.
 
-#### Paso 2: Clonar o descargar el repositorio
-```bash
-git clone https://github.com/Mianjoy/Blockchain-Musical-.git
-cd Blockchain-Musical-
+**2. Arrancar el sistema:**
+
+```bat
+start-system.bat
 ```
 
-#### Paso 3: Ejecutar el sistema completo
-```bash
-docker compose up --build
+Esto levanta:
+- Red Fabric (CA Org1, peer, orderer)
+- Canal `mychannel` + chaincode `music-royalty`
+- `connection.json` + wallet `appUser`
+- API en http://localhost:3000 y UI en http://localhost:3001
+
+Detener:
+
+```bat
+stop-system.bat
 ```
 
-#### Paso 4: Acceder al sistema
+Detalle de la red: [network/README.md](network/README.md)
 
-**Desde la misma máquina (localhost):**
-- **Frontend (Interfaz Gráfica)**: http://localhost:3001
+### Mac / Linux
+
+```bash
+chmod +x start-system.sh stop-system.sh network/scripts/*.sh
+./start-system.sh
+```
+
+### Solo la red Fabric
+
+```bash
+bash network/scripts/network.sh up      # crypto + canal + chaincode + wallet
+bash network/scripts/network.sh down    # apagar
+bash network/scripts/network.sh clean   # borrar artefactos
+```
+
+### Acceso
+
+- **Frontend**: http://localhost:3001
 - **Backend API**: http://localhost:3000/api
-- **Health Check**: http://localhost:3000/health
+- **Health** (incluye estado Fabric): http://localhost:3000/health
+- **Peer / Orderer / CA**: `7051` / `7050` / `7054`
 
-**Desde otras máquinas en la misma red local:**
-1. Obtén la IP de tu máquina donde corre Docker:
-   - **Windows**: `ipconfig` (busca IPv4 de tu adaptador de red)
-   - **Mac/Linux**: `ifconfig` o `ip addr` (busca tu IP local, ej: 192.168.1.XX)
-
-2. Accede desde otros dispositivos usando:
-   - **Frontend**: `http://<TU_IP>:3001` (ej: http://192.168.1.50:3001)
-   - **Backend**: `http://<TU_IP>:3000/api`
-
-> 💡 **Nota**: Asegúrate de que el firewall permita conexiones en los puertos 3000 y 3001.
-
-#### Detener el sistema
-```bash
-docker compose down
-```
-
-#### Limpiar datos y reiniciar
-```bash
-docker compose down -v  # Elimina volúmenes persistentes
-docker compose up --build
-```
+> Sin `ALLOW_SIMULATION=true`, la API **exige** Fabric conectado (ya no cae en simulación en silencio).
 
 ---
 
-### 🖱️ Opción 2: Script Portable Automático (Windows, Mac, Linux)
-
-Se ha incluido un script que automatiza todo el proceso:
-
-#### Windows:
-Haz doble clic en `run-system.bat` o ejecuta:
-```bash
-run-system.bat
-```
-
-#### Mac/Linux:
-```bash
-chmod +x run-system.sh
-./run-system.sh
-```
-
-El script:
-1. Verifica si Docker está instalado
-2. Si no está Docker, te guía para instalarlo
-3. Construye y ejecuta el sistema automáticamente
-4. Abre el navegador en la interfaz gráfica
-
----
-
-### 🛠️ Opción 3: Instalación Manual (Solo Desarrollo)
+### 🛠️ Instalación manual (desarrollo)
 
 #### Requisitos previos:
 - Node.js 18+ (https://nodejs.org/)
@@ -368,11 +346,15 @@ El chaincode de Hyperledger Fabric incluye las siguientes funciones:
 
 ---
 
-## 🧑‍💻 Modo Desarrollo
+## 🧑‍💻 Modo Desarrollo / Simulación
 
-El sistema incluye un modo de simulación que permite operar sin una red Hyperledger Fabric real, ideal para desarrollo y testing.
+Por defecto el sistema usa **Fabric real**. Para permitir fallback a simulación en memoria:
 
-**Hot Reload habilitado**: Los cambios en el código se reflejan automáticamente sin reiniciar contenedores.
+```bash
+ALLOW_SIMULATION=true npm start
+```
+
+La red local de prueba está en `network/` (ver `network/README.md`). El chaincode empaquetable está en `chaincode/music-royalty/`.
 
 ---
 

@@ -9,6 +9,8 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const [accessKey, setAccessKey] = useState('');
   const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
+  const [distribucion, setDistribucion] = useState([]);
 
   if (!song) {
     return (
@@ -20,19 +22,28 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
 
   const handlePurchase = async () => {
     setLoading(true);
+    setError('');
     try {
-      // Simular compra con ID de usuario genérico
-      const compraData = await apiService.comprarCancion(song.id, 'user-123');
-      
-      // Generar clave de acceso simulada (en producción vendría de la blockchain)
-      const generatedKey = `KEY-${song.blockchainId}-${Date.now().toString(36).toUpperCase()}`;
-      setAccessKey(generatedKey);
+      const compra = await apiService.comprarCancion(
+        song.id,
+        `buyer_${Date.now()}`,
+        song.price || 1
+      );
+
+      setDistribucion(compra?.datos?.distribucion || []);
+
+      const claveResp = await apiService.obtenerClaveAcceso(song.id);
+      const key =
+        claveResp?.datos?.claveAcceso ||
+        claveResp?.claveAcceso ||
+        song.claveAcceso ||
+        '';
+
+      setAccessKey(key);
       setPurchaseSuccess(true);
-    } catch (error) {
-      // En caso de error, generar clave de todas formas para demo
-      const generatedKey = `KEY-${song.blockchainId}-${Date.now().toString(36).toUpperCase()}`;
-      setAccessKey(generatedKey);
-      setPurchaseSuccess(true);
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.error || err.message || t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -45,13 +56,14 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
   };
 
   const handleDownload = () => {
-    // En producción, esto validaría la clave con el backend
-    window.open(song.url, '_blank');
+    if (song.url) {
+      window.open(song.url, '_blank');
+    }
   };
 
   return (
     <div className="song-detail-page">
-      <button 
+      <button
         className="btn-back"
         onClick={() => setCurrentPage('songs')}
       >
@@ -60,7 +72,9 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
 
       <div className="song-info">
         <h1>{song.title}</h1>
-        
+
+        {error && <div className="error-message">{error}</div>}
+
         <div className="info-grid">
           <div className="info-item">
             <label>{t('song.detail.song.title')}</label>
@@ -91,7 +105,7 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
               </tr>
             </thead>
             <tbody>
-              {song.participants.map((participant, index) => (
+              {(song.participants || []).map((participant, index) => (
                 <tr key={index}>
                   <td>{participant.name}</td>
                   <td>{participant.role}</td>
@@ -118,6 +132,18 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
           <div className="purchase-success">
             <div className="success-icon">✅</div>
             <h3>{t('song.detail.purchase.success')}</h3>
+            {distribucion.length > 0 && (
+              <div className="participants-section">
+                <h4>Regalías distribuidas</h4>
+                <ul>
+                  {distribucion.map((d, i) => (
+                    <li key={i}>
+                      {d.nombre || d.name} ({d.rol || d.role}): ${Number(d.monto).toFixed(2)}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <div className="access-key-container">
               <label>{t('song.detail.purchase.access.key')}</label>
               <div className="access-key-display">

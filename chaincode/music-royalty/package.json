@@ -1,0 +1,16 @@
+{
+  "name": "music-royalty",
+  "version": "1.0.0",
+  "description": "Chaincode de regalías musicales para Hyperledger Fabric",
+  "main": "index.js",
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "start": "fabric-chaincode-node start"
+  },
+  "dependencies": {
+    "fabric-contract-api": "^2.5.4",
+    "fabric-shim": "^2.5.4"
+  }
+}
