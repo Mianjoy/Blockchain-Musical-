@@ -10,14 +10,15 @@ Red de prueba **Fabric 2.5** embebida en el proyecto: Org1 (peer + CA), orderer 
 
 ## Arranque rápido (Windows)
 
-1. Instalar dependencias:
-```bat
-install-dependencies.bat
-```
+1. Descarga el ZIP del repo y descomprímelo.
+2. Doble clic en **`ARRANCAR.bat`** (instala deps + Fabric + app).
+3. Para apagar: **`DETENER.bat`**.
 
-2. Arrancar Fabric + app:
+Detalle completo: ver sección **Windows — arranque con un solo clic** en el [README principal](../README.md).
+
 ```bat
-start-system.bat
+ARRANCAR.bat
+DETENER.bat
 ```
 
 Esto:

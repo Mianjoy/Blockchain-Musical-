@@ -1,4 +1,3 @@
 @echo off
-REM Compatibilidad: el arranque completo con Fabric esta en start-system.bat
-echo Redirigiendo a start-system.bat (Hyperledger Fabric + App)...
-call "%~dp0start-system.bat"
+REM Compatibilidad: el arranque con un clic es ARRANCAR.bat
+call "%~dp0ARRANCAR.bat"
