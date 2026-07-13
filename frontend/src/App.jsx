@@ -5,7 +5,9 @@ import SongsPage from './pages/SongsPage';
 import CreateSongPage from './pages/CreateSongPage';
 import SongDetailPage from './pages/SongDetailPage';
 import PurchasesPage from './pages/PurchasesPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 import './styles/App.css';
 
 function App() {
@@ -24,6 +26,8 @@ function App() {
         return <SongDetailPage song={selectedSong} setCurrentPage={setCurrentPage} />;
       case 'purchases':
         return <PurchasesPage />;
+      case 'analytics':
+        return <AnalyticsPage />;
       default:
         return <HomePage setCurrentPage={setCurrentPage} />;
     }
@@ -31,12 +35,14 @@ function App() {
 
   return (
     <LanguageProvider>
-      <div className="app">
-        <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-        <main className="main-content">
-          {renderPage()}
-        </main>
-      </div>
+      <NotificationProvider>
+        <div className="app">
+          <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+          <main className="main-content">
+            {renderPage()}
+          </main>
+        </div>
+      </NotificationProvider>
     </LanguageProvider>
   );
 }

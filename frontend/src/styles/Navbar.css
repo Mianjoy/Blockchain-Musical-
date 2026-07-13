@@ -46,7 +46,13 @@
 }
 
 .navbar-language {
-  margin-left: 1rem;
+  margin-left: 0.5rem;
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .language-selector {

@@ -23,6 +23,8 @@ async function main() {
     console.log('  GET    /api/canciones/:id    - Obtener canción');
     console.log('  POST   /api/compras          - Registrar compra');
     console.log('  GET    /api/descargar/:id    - Obtener clave de descarga');
+    console.log('  GET    /api/analytics/regalias - Reportes de regalías');
+    console.log('  GET    /api/notificaciones   - Notificaciones');
     console.log('  GET    /health               - Verificar estado\n');
 
     if (allowSimulation) {

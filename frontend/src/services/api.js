@@ -17,7 +17,8 @@ function mapCancionFromApi(c) {
       percentage: p.porcentaje || p.percentage
     })),
     claveAcceso: c.claveAcceso,
-    activa: c.activa
+    activa: c.activa !== false,
+    fechaCreacion: c.fechaCreacion || null
   };
 }
 
@@ -70,6 +71,28 @@ class ApiService {
 
   async obtenerClaveAcceso(cancionId) {
     const response = await this.api.get(`/descargar/${cancionId}`);
+    return response.data;
+  }
+
+  async getAnalytics() {
+    const response = await this.api.get('/analytics/regalias');
+    return response.data?.datos || response.data;
+  }
+
+  async getNotificaciones(soloNoLeidas = false) {
+    const response = await this.api.get('/notificaciones', {
+      params: soloNoLeidas ? { unread: 'true' } : undefined
+    });
+    return response.data;
+  }
+
+  async marcarNotificacionLeida(id) {
+    const response = await this.api.post(`/notificaciones/${id}/leer`);
+    return response.data;
+  }
+
+  async marcarTodasNotificaciones() {
+    const response = await this.api.post('/notificaciones/leer-todas');
     return response.data;
   }
 

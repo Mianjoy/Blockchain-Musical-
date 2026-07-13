@@ -54,6 +54,12 @@ class MusicRoyaltyAPI {
 
     // Rutas de descarga
     this.app.get('/api/descargar/:cancionId', this.obtenerDescarga.bind(this));
+
+    // Analytics y notificaciones
+    this.app.get('/api/analytics/regalias', this.obtenerAnalytics.bind(this));
+    this.app.get('/api/notificaciones', this.listarNotificaciones.bind(this));
+    this.app.post('/api/notificaciones/:id/leer', this.marcarNotificacionLeida.bind(this));
+    this.app.post('/api/notificaciones/leer-todas', this.marcarTodasNotificaciones.bind(this));
   }
 
   /**
@@ -103,6 +109,17 @@ class MusicRoyaltyAPI {
         linkArchivo,
         participantes,
         usuarioId: usuarioId || 'usuario_anonimo'
+      });
+
+      this.container.getNotificationStore().publicar({
+        tipo: 'lanzamiento',
+        titulo: 'Nuevo lanzamiento',
+        mensaje: `"${titulo}" de ${artista} ya está disponible en el catálogo`,
+        payload: {
+          cancionId: resultado.cancion?.id,
+          titulo,
+          artista
+        }
       });
 
       res.status(201).json({
@@ -174,6 +191,20 @@ class MusicRoyaltyAPI {
         compradorId
       });
 
+      const cancion = await this.container.getCancionRepository().obtenerPorId(cancionId);
+      this.container.getNotificationStore().publicar({
+        tipo: 'venta',
+        titulo: 'Nueva venta registrada',
+        mensaje: cancion
+          ? `Se distribuyeron regalías por la compra de "${cancion.titulo}"`
+          : `Se distribuyeron regalías por la compra de ${cancionId}`,
+        payload: {
+          cancionId,
+          monto: parseFloat(monto),
+          distribucion: resultado.distribucion
+        }
+      });
+
       res.status(201).json({
         mensaje: 'Compra registrada exitosamente',
         datos: resultado
@@ -197,6 +228,62 @@ class MusicRoyaltyAPI {
         mensaje: 'Clave de acceso generada',
         datos: resultado
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/analytics/regalias
+   */
+  async obtenerAnalytics(req, res, next) {
+    try {
+      const reporte = await this.container.getAnalyticsService().generarReporte();
+      res.json({ datos: reporte });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/notificaciones
+   */
+  async listarNotificaciones(req, res, next) {
+    try {
+      const soloNoLeidas = req.query.unread === 'true';
+      const store = this.container.getNotificationStore();
+      res.json({
+        total: store.listar().length,
+        noLeidas: store.contarNoLeidas(),
+        datos: store.listar({ soloNoLeidas })
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/notificaciones/:id/leer
+   */
+  async marcarNotificacionLeida(req, res, next) {
+    try {
+      const item = this.container.getNotificationStore().marcarLeida(req.params.id);
+      if (!item) {
+        return res.status(404).json({ error: 'Notificación no encontrada' });
+      }
+      res.json({ datos: item });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/notificaciones/leer-todas
+   */
+  async marcarTodasNotificaciones(req, res, next) {
+    try {
+      const total = this.container.getNotificationStore().marcarTodasLeidas();
+      res.json({ mensaje: 'Notificaciones marcadas como leídas', total });
     } catch (error) {
       next(error);
     }
