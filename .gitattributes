@@ -1,0 +1,5 @@
+# Forzar LF en scripts bash (evita errores $'\r' en Git Bash / Windows)
+*.sh text eol=lf
+network/scripts/* text eol=lf
+start-system.sh text eol=lf
+stop-system.sh text eol=lf

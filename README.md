@@ -37,13 +37,15 @@ También valen:
 
 `ARRANCAR.bat` hace automáticamente:
 
-1. Revisa e instala **Node.js**, **Git Bash** y **Docker Desktop** (con `winget` si está disponible)
-2. Ejecuta `npm install` (backend, frontend y chaincode)
-3. Levanta la red **Hyperledger Fabric**
-4. Despliega el chaincode `music-royalty`
-5. Genera `connection.json` + wallet `appUser`
-6. Arranca la **API** y el **frontend**
-7. Abre el navegador en http://localhost:3001
+1. Refresca el PATH de Windows (Node / Git / Docker)
+2. Revisa e instala **Node.js**, **Git Bash** y **Docker Desktop** (con `winget` si está disponible)
+3. Ejecuta `npm install` (backend, frontend y chaincode)
+4. Levanta la red **Hyperledger Fabric** vía Git Bash
+5. Despliega el chaincode `music-royalty`
+6. Genera `connection.json` + wallet `appUser`
+7. Arranca la **API** y el **frontend** en ventanas separadas
+8. Abre el navegador en http://localhost:3001
+9. Escribe un registro en **`arranque.log`**
 
 ### Paso 3 — Usar el sistema
 
@@ -328,8 +330,17 @@ Crear canción (+ %) → Contrato en Fabric → Notificación de lanzamiento
 ### En Windows no arranca
 
 1. Ejecuta de nuevo **`ARRANCAR.bat`**
-2. O el asistente con preguntas: `install-dependencies.bat`
-3. Confirma Docker Desktop en verde
+2. Revisa el archivo **`arranque.log`** en la raíz del proyecto (errores detallados)
+3. Confirma **Docker Desktop en verde**
+4. Si acabas de instalar Node/Git/Docker, **cierra la ventana**, reinicia el PC si Docker lo pide, y vuelve a ejecutar `ARRANCAR.bat`
+5. Asistente manual: `install-dependencies.bat`
+
+Problemas frecuentes ya corregidos en el launcher:
+- rutas con espacios
+- Git Bash vs WSL
+- comillas rotas al abrir la API
+- scripts `.sh` con finales de línea Windows (CRLF)
+- PATH que no se actualizaba tras instalar con winget
 
 ### Red Fabric
 
