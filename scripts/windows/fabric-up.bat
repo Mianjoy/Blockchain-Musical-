@@ -25,16 +25,15 @@ set "MODE=%~1"
 if "%MODE%"=="" set "MODE=up"
 
 call "%ROOT%\scripts\windows\refresh-path.bat"
-if exist "%ProgramFiles%\Docker\Docker\resources\bin\docker.exe" set "PATH=%ProgramFiles%\Docker\Docker\resources\bin;%PATH%"
 if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
-
-where docker >nul 2>nul
+call "%ROOT%\scripts\windows\find-docker.bat"
 if errorlevel 1 (
-  call :err "docker no esta en PATH. Instala Docker Desktop."
+  call :err "docker.exe no encontrado. Abre Docker Desktop o ejecuta FABRIC-UP.bat / install-dependencies.bat"
   exit /b 1
 )
+if not defined MR_COMPOSE set "MR_COMPOSE=docker compose"
 
-docker info >nul 2>nul
+"%MR_DOCKER%" info >nul 2>nul
 if errorlevel 1 (
   call :err "Docker Desktop no responde. Abrelo y espera el icono en verde."
   exit /b 1
@@ -48,16 +47,16 @@ exit /b 1
 
 :do_down
 call :log "[INFO] Deteniendo red Fabric..."
-pushd "%ROOT%"
 set "IMAGE_TAG=%FABRIC_VER%"
 set "CA_IMAGE_TAG=%CA_VER%"
-docker compose -f docker-compose.fabric.yml down --volumes --remove-orphans >nul 2>&1
-popd
 pushd "%NET%"
-docker compose -f docker-compose-net.yaml down --volumes --remove-orphans >nul 2>&1
+%MR_COMPOSE% -f docker-compose-net.yaml down --volumes --remove-orphans >nul 2>&1
 popd
-for /f "tokens=*" %%i in ('docker ps -aq --filter "name=dev-peer" 2^>nul') do docker rm -f %%i >nul 2>&1
-for /f "tokens=*" %%i in ('docker images -q --filter "reference=dev-peer*" 2^>nul') do docker rmi -f %%i >nul 2>&1
+pushd "%ROOT%"
+%MR_COMPOSE% -f docker-compose.fabric.yml down --volumes --remove-orphans >nul 2>&1
+popd
+for /f "tokens=*" %%i in ('"%MR_DOCKER%" ps -aq --filter "name=dev-peer" 2^>nul') do "%MR_DOCKER%" rm -f %%i >nul 2>&1
+for /f "tokens=*" %%i in ('"%MR_DOCKER%" images -q --filter "reference=dev-peer*" 2^>nul') do "%MR_DOCKER%" rmi -f %%i >nul 2>&1
 call :log "[OK] Red detenida"
 exit /b 0
 
@@ -122,19 +121,20 @@ if not exist "%NET%\channel-artifacts\%CHANNEL%.block" (
 
 mkdir "%NET%\organizations\fabric-ca\org1" 2>nul
 
-call :log "[3/7] Levantando contenedores Fabric (docker-compose.fabric.yml)..."
-pushd "%ROOT%"
+:: Preferir compose legacy de network/ (probado); fallback al de raiz
+call :log "[3/7] Levantando contenedores Fabric..."
 set "IMAGE_TAG=%FABRIC_VER%"
 set "CA_IMAGE_TAG=%CA_VER%"
-docker compose -f docker-compose.fabric.yml up -d >>"%LOG%" 2>&1
+set "RC=1"
+pushd "%NET%"
+call :log "  Usando network/docker-compose-net.yaml"
+%MR_COMPOSE% -f docker-compose-net.yaml up -d >>"%LOG%" 2>&1
 set "RC=!ERRORLEVEL!"
 popd
 if not "!RC!"=="0" (
-  call :log "  Fallback a network/docker-compose-net.yaml..."
-  pushd "%NET%"
-  set "IMAGE_TAG=%FABRIC_VER%"
-  set "CA_IMAGE_TAG=%CA_VER%"
-  docker compose -f docker-compose-net.yaml up -d >>"%LOG%" 2>&1
+  call :log "  Fallback a docker-compose.fabric.yml (raiz)..."
+  pushd "%ROOT%"
+  %MR_COMPOSE% -f docker-compose.fabric.yml up -d >>"%LOG%" 2>&1
   set "RC=!ERRORLEVEL!"
   popd
 )

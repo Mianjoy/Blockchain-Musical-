@@ -8,11 +8,9 @@ cd /d "%~dp0"
 echo.
 echo Deteniendo solo Hyperledger Fabric...
 call "%~dp0scripts\windows\refresh-path.bat" 2>nul
-if exist "%ProgramFiles%\Docker\Docker\resources\bin\docker.exe" set "PATH=%ProgramFiles%\Docker\Docker\resources\bin;%PATH%"
-
-where docker >nul 2>nul
+call "%~dp0scripts\windows\find-docker.bat" 2>nul
 if errorlevel 1 (
-  echo [AVISO] Docker no disponible.
+  echo [AVISO] Docker no disponible — nada que detener via CLI.
   pause
   exit /b 0
 )

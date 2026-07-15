@@ -14,6 +14,13 @@ if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%
 if exist "%LocalAppData%\Programs\node\node.exe" set "PATH=%LocalAppData%\Programs\node;%PATH%"
 if exist "%ProgramFiles%\Git\bin\bash.exe" set "PATH=%ProgramFiles%\Git\bin;%ProgramFiles%\Git\cmd;%PATH%"
 if exist "%ProgramFiles(x86)%\Git\bin\bash.exe" set "PATH=%ProgramFiles(x86)%\Git\bin;%ProgramFiles(x86)%\Git\cmd;%PATH%"
+
+:: Docker Desktop — varias ubicaciones CLI
 if exist "%ProgramFiles%\Docker\Docker\resources\bin\docker.exe" set "PATH=%ProgramFiles%\Docker\Docker\resources\bin;%PATH%"
+if exist "%ProgramFiles(x86)%\Docker\Docker\resources\bin\docker.exe" set "PATH=%ProgramFiles(x86)%\Docker\Docker\resources\bin;%PATH%"
+if exist "C:\ProgramData\DockerDesktop\version-bin\docker.exe" set "PATH=C:\ProgramData\DockerDesktop\version-bin;%PATH%"
+if exist "%LOCALAPPDATA%\Programs\Docker\Docker\resources\bin\docker.exe" set "PATH=%LOCALAPPDATA%\Programs\Docker\Docker\resources\bin;%PATH%"
+
+call "%~dp0find-docker.bat" >nul 2>nul
 
 exit /b 0
