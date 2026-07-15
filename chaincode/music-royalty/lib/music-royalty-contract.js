@@ -119,7 +119,10 @@ class MusicRoyaltyContract extends Contract {
     if (!Array.isArray(contrato.transacciones)) {
       contrato.transacciones = [];
     }
-    contrato.transacciones.push(transaccion);
+    const yaEnContrato = contrato.transacciones.some((t) => t && t.id === transaccion.id);
+    if (!yaEnContrato) {
+      contrato.transacciones.push(transaccion);
+    }
     await ctx.stub.putState(contrato.id, Buffer.from(JSON.stringify(contrato)));
 
     if (transaccion.distribucion && transaccion.distribucion.length > 0) {

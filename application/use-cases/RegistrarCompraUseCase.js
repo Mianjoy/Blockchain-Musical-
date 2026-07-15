@@ -5,7 +5,8 @@ const IBlockchainService = require('../../domain/interfaces/IBlockchainService')
 
 /**
  * Caso de Uso: RegistrarCompraUseCase
- * Registra una compra de canción y distribuye regalías automáticamente
+ * Registra una compra de canción y distribuye regalías automáticamente.
+ * Una sola escritura de la transacción en el contrato (evita duplicados).
  */
 class RegistrarCompraUseCase {
   /**
@@ -38,7 +39,9 @@ class RegistrarCompraUseCase {
     } else if (Number.isFinite(montoFallback) && montoFallback > 0) {
       monto = montoFallback;
     } else {
-      throw new Error('La canción no tiene un precio válido. Vuelve a crearla con un precio mayor a 0.');
+      throw new Error(
+        'La canción no tiene un precio válido. Vuelve a crearla con un precio mayor a 0.'
+      );
     }
 
     const contrato = await this.contratoRepository.obtenerPorCancionId(cancionId);
@@ -60,9 +63,14 @@ class RegistrarCompraUseCase {
 
     const distribucion = contrato.distribuirRegalias(monto);
     transaccion.registrarDistribucion(distribucion);
+
+    // Persistencia única: el servicio/blockchain actualiza el contrato.
+    // No llamar contrato.registrarTransaccion() aquí (duplicaba en simulación).
+    await this.blockchainService.registrarTransaccion(transaccion);
+
+    // Refrescar estado local una sola vez
     contrato.registrarTransaccion(transaccion.toPlainObject());
     await this.contratoRepository.actualizar(contrato);
-    await this.blockchainService.registrarTransaccion(transaccion);
 
     return {
       transaccion: transaccion.toPlainObject(),

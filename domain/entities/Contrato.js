@@ -25,6 +25,10 @@ class Contrato {
     if (!this._activo) {
       throw new Error('El contrato no está activo');
     }
+    const id = transaccion && transaccion.id;
+    if (id && this._transacciones.some((t) => t && t.id === id)) {
+      return; // idempotente: no duplicar
+    }
     this._transacciones.push(transaccion);
   }
 
@@ -58,9 +62,13 @@ class Contrato {
     return {
       id: this._id,
       cancionId: this._cancionId,
-      participantes: this._participantes,
+      participantes: this._participantes.map((p) => ({ ...p })),
       fechaCreacion: this._fechaCreacion,
-      transacciones: this._transacciones,
+      // Copia defensiva: si se comparte la misma referencia con el store
+      // de simulación, un segundo push duplica la compra.
+      transacciones: this._transacciones.map((t) =>
+        typeof t === 'object' && t !== null ? { ...t } : t
+      ),
       activo: this._activo
     };
   }

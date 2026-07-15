@@ -19,6 +19,7 @@ class AnalyticsService {
     const porCancion = [];
     const porBeneficiario = new Map();
     const timeline = [];
+    const seenTxIds = new Set();
 
     let totalVentas = 0;
     let totalTransacciones = 0;
@@ -32,6 +33,11 @@ class AnalyticsService {
       const distribucionAcumulada = {};
 
       for (const tx of txs) {
+        if (!tx || !tx.id) continue;
+        // Evitar contar la misma venta dos veces si quedó duplicada en memoria
+        if (seenTxIds.has(tx.id)) continue;
+        seenTxIds.add(tx.id);
+
         const monto = Number(tx.monto) || 0;
         totalTransacciones += 1;
         totalVentas += monto;

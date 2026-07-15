@@ -141,7 +141,8 @@ class HyperledgerFabricService extends IBlockchainService {
     const contratoData = JSON.stringify(contrato.toPlainObject());
 
     if (this._modoSimulacion) {
-      const plain = contrato.toPlainObject();
+      // Copia profunda superficial para no compartir arrays con la entidad en caché
+      const plain = JSON.parse(JSON.stringify(contrato.toPlainObject()));
       this._simStore.contratos.set(contrato.id, plain);
       this._simStore.contratosPorCancion.set(contrato.cancionId, contrato.id);
       console.log('[SIMULACIÓN] Registrando contrato:', contrato.id);
@@ -161,7 +162,7 @@ class HyperledgerFabricService extends IBlockchainService {
     const contratoData = JSON.stringify(contrato.toPlainObject());
 
     if (this._modoSimulacion) {
-      const plain = contrato.toPlainObject();
+      const plain = JSON.parse(JSON.stringify(contrato.toPlainObject()));
       this._simStore.contratos.set(contrato.id, plain);
       this._simStore.contratosPorCancion.set(contrato.cancionId, contrato.id);
       return true;
@@ -183,13 +184,27 @@ class HyperledgerFabricService extends IBlockchainService {
       if (!this._simStore.transacciones) {
         this._simStore.transacciones = new Map();
       }
+
+      // Idempotencia: misma TX no se vuelve a anexar
+      if (this._simStore.transacciones.has(transaccion.id)) {
+        console.log('[SIMULACIÓN] Transacción ya registrada:', transaccion.id);
+        return true;
+      }
       this._simStore.transacciones.set(transaccion.id, plain);
 
       const contrato = this._simStore.contratos.get(transaccion.contratoId);
       if (contrato) {
-        if (!Array.isArray(contrato.transacciones)) contrato.transacciones = [];
-        contrato.transacciones.push(plain);
-        this._simStore.contratos.set(contrato.id, contrato);
+        if (!Array.isArray(contrato.transacciones)) {
+          contrato.transacciones = [];
+        }
+        const yaExiste = contrato.transacciones.some((t) => t && t.id === transaccion.id);
+        if (!yaExiste) {
+          contrato.transacciones.push(plain);
+        }
+        this._simStore.contratos.set(contrato.id, {
+          ...contrato,
+          transacciones: [...contrato.transacciones]
+        });
       }
 
       console.log('[SIMULACIÓN] Registrando transacción:', transaccion.id);

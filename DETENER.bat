@@ -1,3 +1,3 @@
 @echo off
-REM Alias amigable: detener todo el sistema
-call "%~dp0stop-system.bat"
+REM Alias: cierra TODO el sistema (API + UI + Fabric), aunque no haya nada corriendo
+call "%~dp0CERRAR-TODO.bat"

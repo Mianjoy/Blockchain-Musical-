@@ -12,7 +12,7 @@ echo.
 echo  Limpia red + artefactos y vuelve a generarlos con fabric-up.bat
 echo  ^(CMD + Docker, sin Git Bash^).
 echo.
-echo  Fabric 2.5.16 / CA 1.5.21
+echo  Fabric 3.1.5 / CA 1.5.21
 echo  Si el error fue "client version 1.25 is too old":
 echo     1^) FIX-DOCKER-API.bat
 echo     2^) Apply ^& Restart en Docker Desktop
@@ -45,10 +45,10 @@ if errorlevel 1 (
 )
 
 echo.
-echo [0/3] Descargando imagenes Fabric 2.5.16 / CA 1.5.21...
-docker pull hyperledger/fabric-peer:2.5.16
-docker pull hyperledger/fabric-orderer:2.5.16
-docker pull hyperledger/fabric-tools:2.5.16
+echo [0/3] Descargando imagenes Fabric 3.1.5 / CA 1.5.21...
+docker pull hyperledger/fabric-peer:3.1.5
+docker pull hyperledger/fabric-orderer:3.1.5
+docker pull hyperledger/fabric-tools:3.1.5
 docker pull hyperledger/fabric-ca:1.5.21
 docker pull node:18-alpine
 
@@ -94,7 +94,7 @@ if errorlevel 1 (
 )
 
 echo.
-echo [OK] Red Fabric 2.5.16 reparada desde cero.
+echo [OK] Red Fabric 3.1.5 reparada desde cero.
 echo      Ahora: ARRANCAR-FABRIC.bat
 echo.
 pause

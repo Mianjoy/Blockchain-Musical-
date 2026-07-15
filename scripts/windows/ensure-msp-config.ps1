@@ -1,4 +1,4 @@
-# Ensures every MSP folder has a valid NodeOUs config.yaml (required by Fabric 2.5).
+# Ensures every MSP folder has a valid NodeOUs config.yaml (required by Fabric).
 # Missing config.yaml => "creator org unknown, creator is malformed".
 $ErrorActionPreference = 'Stop'
 $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent

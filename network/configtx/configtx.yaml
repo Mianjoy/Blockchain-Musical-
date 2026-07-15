@@ -39,7 +39,8 @@ Organizations:
 
 Capabilities:
   Channel: &ChannelCapabilities
-    V2_0: true
+    # Fabric 3.x: canal a nivel V3_0 (requiere peer/orderer >= 3.0)
+    V3_0: true
   Orderer: &OrdererCapabilities
     V2_0: true
   Application: &ApplicationCapabilities

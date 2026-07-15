@@ -1,6 +1,6 @@
 @echo off
 :: =============================================================================
-:: fabric-up.bat — Hyperledger Fabric 2.5.16 en Windows nativo (CMD + Docker)
+:: fabric-up.bat — Hyperledger Fabric 3.1.5 en Windows nativo (CMD + Docker)
 :: Uso: fabric-up.bat [up|down|clean]
 :: =============================================================================
 setlocal EnableDelayedExpansion
@@ -10,7 +10,7 @@ set "ROOT=%CD%"
 set "NET=%ROOT%\network"
 set "CC=%ROOT%\chaincode\music-royalty"
 set "LOG=%ROOT%\fabric-network.log"
-set "FABRIC_VER=2.5.16"
+set "FABRIC_VER=3.1.5"
 set "CA_VER=1.5.21"
 set "CHANNEL=mychannel"
 set "CC_NAME=music-royalty"

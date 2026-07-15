@@ -9,7 +9,7 @@ echo  FIX Docker API ^(Fabric chaincode / error client 1.25^)
 echo ============================================================
 echo.
 echo Docker Desktop moderno rechaza clientes Docker antiguos.
-echo Fabric 2.5.4 usaba API 1.25; el proyecto ahora usa Fabric 2.5.16.
+echo Fabric 2.5.4 usaba API 1.25; el proyecto ahora usa Fabric 3.1.5.
 echo.
 echo Ademas, este script configura Docker Engine para aceptar
 echo APIs antiguas ^(min-api-version 1.24^) por si hace falta.

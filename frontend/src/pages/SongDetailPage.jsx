@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
 import '../styles/SongDetailPage.css';
@@ -11,6 +11,7 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [distribucion, setDistribucion] = useState([]);
+  const purchasingRef = useRef(false);
 
   if (!song) {
     return (
@@ -21,6 +22,8 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
   }
 
   const handlePurchase = async () => {
+    if (purchasingRef.current || loading || purchaseSuccess) return;
+    purchasingRef.current = true;
     setLoading(true);
     setError('');
     try {
@@ -56,6 +59,7 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.error || err.message || t('common.error'));
+      purchasingRef.current = false;
     } finally {
       setLoading(false);
     }
