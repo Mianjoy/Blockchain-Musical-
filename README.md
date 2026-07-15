@@ -27,11 +27,16 @@ Abre la carpeta del proyecto y haz **doble clic** en:
 ARRANCAR.bat
 ```
 
-También valen:
+Si solo quieres **probar la app ya** (sin pelearte con Fabric):
+
+```text
+ARRANCAR-DEMO.bat
+```
 
 | Archivo | Qué hace |
 |---------|----------|
-| **`ARRANCAR.bat`** | **Recomendado** — instala lo que falte y arranca todo |
+| **`ARRANCAR.bat`** | Intenta Fabric; si falla, arranca **DEMO/simulación** automáticamente |
+| **`ARRANCAR-DEMO.bat`** | Solo simulación (Node.js; no necesita Docker/Fabric) |
 | `run-system.bat` | Alias de `ARRANCAR.bat` |
 | `crear-acceso-directo.bat` | Crea un acceso directo en el Escritorio |
 
@@ -347,6 +352,13 @@ El proyecto ya fuerza `MSYS_NO_PATHCONV` y convierte rutas con `cygpath`. Si aú
 4. Luego **`ARRANCAR.bat`**
 
 Detalle del fallo: `fabric-network.log`
+
+### Error: `timed out waiting for txid on all peers`
+
+Ocurre en `approveformyorg` / `commit` del chaincode (el peer no confirma la tx a tiempo).
+
+1. Prueba **`REPARAR-FABRIC.bat`** y luego **`ARRANCAR.bat`**
+2. O usa **`ARRANCAR-DEMO.bat`** / deja que `ARRANCAR.bat` caiga a simulación (la app queda usable)
 
 ### Error: `client version 1.25 is too old` / `Minimum supported API version is 1.40`
 

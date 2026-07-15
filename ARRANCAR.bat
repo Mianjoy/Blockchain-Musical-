@@ -6,185 +6,124 @@ cd /d "%~dp0"
 
 set "ROOT=%CD%"
 set "LOG=%ROOT%\arranque.log"
-
 echo.>"%LOG%"
+
 call :log "=============================================================="
 call :log " MUSIC ROYALTY - ARRANQUE WINDOWS"
 call :log "=============================================================="
 call :log "Carpeta: %ROOT%"
-call :log "Log:     %LOG%"
 echo.
-echo  Este asistente prepara dependencias y arranca Fabric + API + UI.
-echo  Puede tardar varios minutos la primera vez.
+echo  1^) Prepara Node / Git / Docker
+echo  2^) Intenta Hyperledger Fabric
+echo  3^) Si Fabric falla, arranca DEMO en simulacion ^(siempre usable^)
 echo.
-echo  Registro en: arranque.log
+echo  Log: arranque.log
 echo.
 
-call :log "[1/6] Refrescando PATH..."
 call "%ROOT%\scripts\windows\refresh-path.bat"
 
-call :log "[2/6] Comprobando Node.js..."
-call "%ROOT%\scripts\windows\refresh-path.bat"
+:: ---- Node ----
 where node >nul 2>nul
-if errorlevel 1 goto install_node
-goto node_ready
-
-:install_node
-call :log "  Node no encontrado. Intentando winget..."
-where winget >nul 2>nul
 if errorlevel 1 (
-  start "" "https://nodejs.org/en/download"
-  set "ERRMSG=Instala Node.js LTS, cierra esta ventana y vuelve a ejecutar ARRANCAR.bat"
-  goto fatal
+  where winget >nul 2>nul
+  if not errorlevel 1 (
+    call :log "[..] Instalando Node.js LTS..."
+    winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
+    call "%ROOT%\scripts\windows\refresh-path.bat"
+  )
 )
-winget install -e --id OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
-call "%ROOT%\scripts\windows\refresh-path.bat"
 if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
 where node >nul 2>nul
 if errorlevel 1 (
-  set "ERRMSG=Node.js no esta en PATH. Reinicia el PC y reintenta ARRANCAR.bat"
-  goto fatal
+  start "" "https://nodejs.org/en/download"
+  call :fatal "Instala Node.js LTS y vuelve a ejecutar ARRANCAR.bat"
 )
 
-:node_ready
-for /f "tokens=*" %%v in ('node -v 2^>nul') do call :log "  [OK] Node %%v"
-where npm >nul 2>nul
-if errorlevel 1 (
-  set "ERRMSG=npm no encontrado. Reinstala Node.js LTS marcando Add to PATH."
-  goto fatal
+:: ---- npm deps ----
+if not exist "%ROOT%\node_modules\" (
+  call :log "[..] npm install backend..."
+  pushd "%ROOT%" & call npm install & set "E=!ERRORLEVEL!" & popd
+  if not "!E!"=="0" call :fatal "npm install backend fallo"
+)
+if not exist "%ROOT%\frontend\node_modules\" (
+  call :log "[..] npm install frontend..."
+  pushd "%ROOT%\frontend" & call npm install & set "E=!ERRORLEVEL!" & popd
+  if not "!E!"=="0" call :fatal "npm install frontend fallo"
 )
 
-call :log "[3/6] Comprobando Git Bash..."
-call "%ROOT%\scripts\windows\find-bash.bat"
-if defined MR_BASH goto bash_ready
-call :log "  Git Bash no encontrado. Intentando winget..."
-where winget >nul 2>nul
-if errorlevel 1 (
-  start "" "https://git-scm.com/download/win"
-  set "ERRMSG=Instala Git for Windows (con Git Bash) y reintenta ARRANCAR.bat"
-  goto fatal
-)
-winget install -e --id Git.Git --accept-package-agreements --accept-source-agreements
-call "%ROOT%\scripts\windows\refresh-path.bat"
+:: ---- Intentar Fabric si Docker+Git Bash estan OK ----
+set "TRY_FABRIC=1"
 call "%ROOT%\scripts\windows\find-bash.bat"
 if not defined MR_BASH (
-  set "ERRMSG=Git Bash sigue sin encontrarse. Instala Git for Windows y reintenta."
-  goto fatal
+  call :log "[AVISO] Sin Git Bash: se usara modo DEMO/simulacion"
+  set "TRY_FABRIC=0"
 )
-
-:bash_ready
-call :log "  [OK] %MR_BASH%"
-
-call :log "[4/6] Comprobando Docker Desktop..."
-call "%ROOT%\scripts\windows\refresh-path.bat"
 where docker >nul 2>nul
-if errorlevel 1 goto install_docker
-goto docker_cli_ok
-
-:install_docker
-call :log "  Docker no encontrado. Intentando winget..."
-where winget >nul 2>nul
 if errorlevel 1 (
-  start "" "https://www.docker.com/products/docker-desktop/"
-  set "ERRMSG=Instala Docker Desktop, reinicia si te lo pide, abrilo (icono verde) y reintenta."
-  goto fatal
+  if exist "%ProgramFiles%\Docker\Docker\resources\bin\docker.exe" set "PATH=%ProgramFiles%\Docker\Docker\resources\bin;%PATH%"
 )
-winget install -e --id Docker.DockerDesktop --accept-package-agreements --accept-source-agreements
-set "ERRMSG=Docker Desktop se esta instalando. Reinicia el PC si lo pide, abre Docker (verde) y vuelve a ejecutar ARRANCAR.bat"
-goto fatal
-
-:docker_cli_ok
-docker info >nul 2>nul
-if not errorlevel 1 goto docker_ready
-call :log "  Docker CLI OK pero el motor no responde. Abriendo Docker Desktop..."
-if exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe" start "" "%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
-call :wait_docker
+where docker >nul 2>nul
 if errorlevel 1 (
-  set "ERRMSG=Docker Desktop no esta activo. Abrelo, espera el icono verde y reintenta ARRANCAR.bat"
-  goto fatal
-)
-
-:docker_ready
-for /f "tokens=*" %%v in ('docker --version 2^>nul') do call :log "  [OK] %%v"
-
-call :log "[5/6] Instalando dependencias npm si hacen falta..."
-if exist "%ROOT%\node_modules\" goto skip_npm_root
-call :log "  npm install (backend)..."
-pushd "%ROOT%"
-call npm install
-set "NPM_ERR=!ERRORLEVEL!"
-popd
-if not "!NPM_ERR!"=="0" (
-  set "ERRMSG=npm install fallo en la raiz. Revisa la salida y arranque.log"
-  goto fatal
-)
-:skip_npm_root
-call :log "  [OK] backend"
-
-if exist "%ROOT%\frontend\node_modules\" goto skip_npm_fe
-call :log "  npm install (frontend)..."
-pushd "%ROOT%\frontend"
-call npm install
-set "FE_ERR=!ERRORLEVEL!"
-popd
-if not "!FE_ERR!"=="0" (
-  set "ERRMSG=npm install fallo en frontend."
-  goto fatal
-)
-:skip_npm_fe
-call :log "  [OK] frontend"
-
-if not exist "%ROOT%\chaincode\music-royalty\package.json" goto skip_npm_cc
-if exist "%ROOT%\chaincode\music-royalty\node_modules\" goto skip_npm_cc
-call :log "  npm install (chaincode)..."
-pushd "%ROOT%\chaincode\music-royalty"
-call npm install --omit=dev
-popd
-:skip_npm_cc
-
-call :log "[6/6] Levantando Fabric + API + Frontend..."
-call "%ROOT%\start-system.bat" /from-arrancar
-set "SRC=!ERRORLEVEL!"
-if not "!SRC!"=="0" (
-  call :log "[ERROR] start-system.bat fallo con codigo !SRC!"
-  echo.
-  echo ==============================================================
-  echo  Fallo al arrancar ^(codigo !SRC!^)
-  echo ==============================================================
-  echo.
-  echo  Esto NO es un error de "Logs compose".
-  echo  Esa linea solo era una pista antigua; el fallo real esta en:
-  echo.
-  echo     fabric-network.log
-  echo     arranque.log
-  echo.
-  echo  Ejecuta ahora:  DIAGNOSTICO.bat
-  echo  Luego:          REPARAR-FABRIC.bat
-  echo  Y despues:      ARRANCAR.bat
-  echo.
-  if exist "%ROOT%\fabric-network.log" (
-    echo  --- Ultimas lineas fabric-network.log ---
-    powershell -NoProfile -Command "Get-Content -LiteralPath '%ROOT%\fabric-network.log' -Tail 30"
-    echo  -----------------------------------------
+  call :log "[AVISO] Sin Docker: se usara modo DEMO/simulacion"
+  set "TRY_FABRIC=0"
+) else (
+  docker info >nul 2>nul
+  if errorlevel 1 (
+    if exist "%ProgramFiles%\Docker\Docker\Docker Desktop.exe" start "" "%ProgramFiles%\Docker\Docker\Docker Desktop.exe"
+    call :log "[..] Esperando Docker Desktop..."
+    set /a _i=0
+    :wait_d
+    set /a _i+=1
+    docker info >nul 2>nul
+    if not errorlevel 1 goto docker_ready
+    if !_i! GEQ 24 (
+      call :log "[AVISO] Docker no respondio: se usara modo DEMO/simulacion"
+      set "TRY_FABRIC=0"
+      goto after_docker
+    )
+    timeout /t 5 /nobreak >nul
+    goto wait_d
   )
-  pause
-  exit /b 1
 )
-exit /b 0
+:docker_ready
+:after_docker
 
-:wait_docker
-set /a _tries=0
-:wait_docker_loop
-set /a _tries+=1
-docker info >nul 2>nul
-if not errorlevel 1 (
-  call :log "  [OK] Docker listo"
-  exit /b 0
+if "!TRY_FABRIC!"=="1" (
+  call :log "[FABRIC] Levantando red Hyperledger Fabric..."
+  call "%ROOT%\scripts\windows\run-bash.bat" network/scripts/network.sh up
+  if errorlevel 1 (
+    call :log "[AVISO] Fabric fallo. Arrancando DEMO en simulacion para que puedas probar la app."
+    echo.
+    echo ==============================================================
+    echo  Fabric no completo el despliegue del chaincode.
+    echo  Se inicia el sistema en MODO DEMO / SIMULACION.
+    echo  ^(Catalogo, compras, analytics y notificaciones funcionan^)
+    echo ==============================================================
+    echo.
+    call "%ROOT%\scripts\windows\start-app.bat" simulation
+    set "APP_RC=!ERRORLEVEL!"
+    goto end_app
+  )
+  call :log "[FABRIC] Red OK. Arrancando API en modo Fabric..."
+  call "%ROOT%\scripts\windows\start-app.bat" fabric
+  set "APP_RC=!ERRORLEVEL!"
+  goto end_app
 )
-if !_tries! GEQ 36 exit /b 1
-call :log "  Esperando Docker... intento !_tries!/36"
-timeout /t 5 /nobreak >nul
-goto wait_docker_loop
+
+call :log "[DEMO] Arrancando sin Fabric ^(simulacion^)..."
+call "%ROOT%\scripts\windows\start-app.bat" simulation
+set "APP_RC=!ERRORLEVEL!"
+
+:end_app
+if not "!APP_RC!"=="0" (
+  call :fatal "No se pudo iniciar la API/Frontend"
+)
+echo.
+echo Sistema listo. Abre http://localhost:3001
+echo Para detener: DETENER.bat
+echo.
+pause
+exit /b 0
 
 :log
 echo %~1
@@ -193,12 +132,8 @@ exit /b 0
 
 :fatal
 echo.
-echo ==============================================================
-echo  [ERROR] !ERRMSG!
-echo ==============================================================
-echo.
->>"%LOG%" echo %date% %time% [ERROR] !ERRMSG!
-echo  Guarda/envia arranque.log si necesitas ayuda.
+echo [ERROR] %~1
+>>"%LOG%" echo %date% %time% [ERROR] %~1
 echo.
 pause
 exit /b 1
