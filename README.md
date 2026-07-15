@@ -330,17 +330,23 @@ Crear canción (+ %) → Contrato en Fabric → Notificación de lanzamiento
 ### En Windows no arranca
 
 1. Ejecuta de nuevo **`ARRANCAR.bat`**
-2. Revisa el archivo **`arranque.log`** en la raíz del proyecto (errores detallados)
+2. Revisa **`arranque.log`** y **`fabric-network.log`**
 3. Confirma **Docker Desktop en verde**
-4. Si acabas de instalar Node/Git/Docker, **cierra la ventana**, reinicia el PC si Docker lo pide, y vuelve a ejecutar `ARRANCAR.bat`
+4. Si acabas de instalar Node/Git/Docker, reinicia y vuelve a ejecutar `ARRANCAR.bat`
 5. Asistente manual: `install-dependencies.bat`
 
-Problemas frecuentes ya corregidos en el launcher:
-- rutas con espacios
-- Git Bash vs WSL
-- comillas rotas al abrir la API
-- scripts `.sh` con finales de línea Windows (CRLF)
-- PATH que no se actualizaba tras instalar con winget
+### Error Fabric código **125**
+
+Es un error de **Docker** (no de Node): Git Bash en Windows a menudo rompe las rutas `-v` al montar carpetas.
+
+El proyecto ya fuerza `MSYS_NO_PATHCONV` y convierte rutas con `cygpath`. Si aún falla:
+
+1. Docker Desktop → **Settings → Resources → File sharing**
+2. Marca la unidad del proyecto (`C:` o `D:`) → **Apply & Restart**
+3. Ejecuta **`REPARAR-FABRIC.bat`**
+4. Luego **`ARRANCAR.bat`**
+
+Detalle del fallo: `fabric-network.log`
 
 ### Red Fabric
 

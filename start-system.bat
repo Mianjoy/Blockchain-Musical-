@@ -96,7 +96,18 @@ echo [INFO] Levantando Hyperledger Fabric ^(puede tardar varios minutos^)...
 call "%ROOT%\scripts\windows\run-bash.bat" network/scripts/network.sh up
 if errorlevel 1 (
   echo [ERROR] Fallo al levantar la red Fabric.
-  echo Revisa: docker compose -f network\docker-compose-net.yaml logs
+  echo.
+  echo  Revisa estos archivos en la raiz del proyecto:
+  echo    - fabric-network.log
+  echo    - arranque.log
+  echo.
+  echo  Si el codigo fue 125:
+  echo    1. Abre Docker Desktop ^(icono verde^)
+  echo    2. Settings ^> Resources ^> File sharing
+  echo    3. Marca la unidad del proyecto ^(C: / D:^) y Apply ^& Restart
+  echo    4. Ejecuta REPARAR-FABRIC.bat y luego ARRANCAR.bat
+  echo.
+  echo  Logs compose: docker compose -f network\docker-compose-net.yaml logs
   if "!FROM_ARRANCAR!"=="0" pause
   exit /b 1
 )

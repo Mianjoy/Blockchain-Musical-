@@ -6,6 +6,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/env.sh"
 
 printInfo "Generando certificados (cryptogen)..."
+printInfo "ROOT_DIR=${ROOT_DIR}"
+printInfo "Docker mount=$(toDockerPath "${ROOT_DIR}")"
 
 rm -rf "${ROOT_DIR}/organizations/peerOrganizations" \
        "${ROOT_DIR}/organizations/ordererOrganizations" \
@@ -17,18 +19,53 @@ mkdir -p "${ROOT_DIR}/organizations/peerOrganizations" \
          "${ROOT_DIR}/channel-artifacts" \
          "${ROOT_DIR}/organizations/fabric-ca/org1"
 
+set +e
 fabricTools cryptogen generate \
   --config=/work/organizations/cryptogen/crypto-config-org1.yaml \
   --output=/work/organizations
+RC1=$?
+set -e
+if [[ "${RC1}" -ne 0 ]]; then
+  printError "cryptogen Org1 fallo (codigo ${RC1})"
+  if [[ "${RC1}" == "125" ]]; then
+    printError "Docker rechazo el volumen. En Docker Desktop > Settings > Resources > File sharing"
+    printError "habilita la unidad donde esta el proyecto (ej. D:) y Apply & Restart."
+  fi
+  exit "${RC1}"
+fi
 
+set +e
 fabricTools cryptogen generate \
   --config=/work/organizations/cryptogen/crypto-config-orderer.yaml \
   --output=/work/organizations
+RC2=$?
+set -e
+if [[ "${RC2}" -ne 0 ]]; then
+  printError "cryptogen Orderer fallo (codigo ${RC2})"
+  exit "${RC2}"
+fi
 
-printInfo "Generando bloque de configuración del canal ${CHANNEL_NAME}..."
+printInfo "Generando bloque de configuracion del canal ${CHANNEL_NAME}..."
+set +e
 fabricTools configtxgen \
   -profile MusicRoyaltyChannel \
   -outputBlock "/work/channel-artifacts/${CHANNEL_NAME}.block" \
   -channelID "${CHANNEL_NAME}"
+RC3=$?
+set -e
+if [[ "${RC3}" -ne 0 ]]; then
+  printError "configtxgen fallo (codigo ${RC3})"
+  exit "${RC3}"
+fi
+
+if [[ ! -f "${ROOT_DIR}/channel-artifacts/${CHANNEL_NAME}.block" ]]; then
+  printError "No se genero el bloque del canal"
+  exit 1
+fi
+
+if [[ ! -d "${ROOT_DIR}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp" ]]; then
+  printError "MSP del orderer no generado"
+  exit 1
+fi
 
 printSuccess "Crypto y bloque de canal generados"

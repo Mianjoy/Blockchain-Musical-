@@ -12,11 +12,24 @@ CC_LABEL="${CC_NAME}_${CC_VERSION}"
 CC_PACKAGE="${CC_NAME}.tar.gz"
 
 printInfo "Instalando dependencias del chaincode (npm)..."
-docker run --rm \
-  -v "${CC_SRC_PATH}:/chaincode" \
+CC_DOCKER_PATH="$(toDockerPath "${CC_SRC_PATH}")"
+printInfo "Chaincode mount: ${CC_DOCKER_PATH}"
+set +e
+MSYS_NO_PATHCONV=1 docker run --rm \
+  -v "${CC_DOCKER_PATH}:/chaincode" \
   -w /chaincode \
   node:18-alpine \
   sh -c "npm install --omit=dev"
+CC_NPM_RC=$?
+set -e
+if [[ "${CC_NPM_RC}" -ne 0 ]]; then
+  printError "npm install del chaincode fallo (codigo ${CC_NPM_RC})"
+  if [[ "${CC_NPM_RC}" == "125" ]]; then
+    printError "Error 125: Docker no pudo montar ${CC_DOCKER_PATH}"
+    printError "Habilita File sharing de esa unidad en Docker Desktop."
+  fi
+  exit "${CC_NPM_RC}"
+fi
 
 printInfo "Empaquetando chaincode ${CC_NAME}..."
 docker exec -w /opt/gopath/src/github.com/hyperledger/fabric/peer fabric-cli \
