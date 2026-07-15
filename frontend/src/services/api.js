@@ -4,13 +4,15 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 function mapCancionFromApi(c) {
   if (!c) return null;
+  const rawPrice = c.precio ?? c.price;
+  const price = Number(rawPrice);
   return {
     id: c.id,
     blockchainId: c.id,
     title: c.titulo || c.title,
     artist: c.artista || c.artist,
     url: c.linkArchivo || c.url,
-    price: c.precio || c.price || 1,
+    price: Number.isFinite(price) ? price : 0,
     participants: (c.participantes || c.participants || []).map((p) => ({
       name: p.nombre || p.name,
       role: p.rol || p.role,
@@ -44,10 +46,12 @@ class ApiService {
   }
 
   async crearCancion(cancionData) {
+    const precio = Number(cancionData.price ?? cancionData.precio);
     const payload = {
       titulo: cancionData.title || cancionData.titulo,
       artista: cancionData.artist || cancionData.artista,
       linkArchivo: cancionData.url || cancionData.linkArchivo,
+      precio,
       participantes: (cancionData.participants || cancionData.participantes || []).map((p) => ({
         nombre: p.name || p.nombre,
         rol: p.role || p.rol,
@@ -60,11 +64,12 @@ class ApiService {
     return response.data;
   }
 
-  async comprarCancion(cancionId, compradorId, monto = 1) {
+  async comprarCancion(cancionId, compradorId, monto) {
     const response = await this.api.post('/compras', {
       cancionId,
       compradorId,
-      monto: Number(monto)
+      // El backend usa el precio persistido de la canción; se envía por compatibilidad
+      monto: monto != null ? Number(monto) : undefined
     });
     return response.data;
   }

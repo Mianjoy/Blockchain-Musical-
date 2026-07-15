@@ -87,7 +87,7 @@ if errorlevel 1 (
 :after_docker
 
 if "!TRY_FABRIC!"=="1" (
-  call :log "[FABRIC] Levantando Hyperledger Fabric 2.5.15 ^(Windows nativo^)..."
+  call :log "[FABRIC] Levantando Hyperledger Fabric 2.5.16 ^(Windows nativo^)..."
   call "%ROOT%\scripts\windows\fabric-up.bat" up
   if errorlevel 1 (
     call :log "[AVISO] Fabric fallo. Arrancando DEMO en simulacion."

@@ -176,9 +176,22 @@ class HyperledgerFabricService extends IBlockchainService {
       throw new Error('El objeto debe ser una instancia de Transaccion');
     }
 
-    const transaccionData = JSON.stringify(transaccion.toPlainObject());
+    const plain = transaccion.toPlainObject();
+    const transaccionData = JSON.stringify(plain);
 
     if (this._modoSimulacion) {
+      if (!this._simStore.transacciones) {
+        this._simStore.transacciones = new Map();
+      }
+      this._simStore.transacciones.set(transaccion.id, plain);
+
+      const contrato = this._simStore.contratos.get(transaccion.contratoId);
+      if (contrato) {
+        if (!Array.isArray(contrato.transacciones)) contrato.transacciones = [];
+        contrato.transacciones.push(plain);
+        this._simStore.contratos.set(contrato.id, contrato);
+      }
+
       console.log('[SIMULACIÓN] Registrando transacción:', transaccion.id);
       return true;
     }
@@ -251,6 +264,11 @@ class HyperledgerFabricService extends IBlockchainService {
     if (this._modoSimulacion) {
       this._simStore.claves.set(cancionId, clave.valor);
       this._claveCache.set(cancionId, clave);
+      const song = this._simStore.canciones.get(cancionId);
+      if (song) {
+        song.claveAcceso = clave.valor;
+        this._simStore.canciones.set(cancionId, song);
+      }
       return clave;
     }
 

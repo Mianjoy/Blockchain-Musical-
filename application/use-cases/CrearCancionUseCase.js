@@ -20,7 +20,12 @@ class CrearCancionUseCase {
   }
 
   async execute(datosCancion) {
-    const { titulo, artista, linkArchivo, participantes, usuarioId } = datosCancion;
+    const { titulo, artista, linkArchivo, participantes, usuarioId, precio, price } = datosCancion;
+    const precioFinal = Number(precio ?? price);
+
+    if (!Number.isFinite(precioFinal) || precioFinal <= 0) {
+      throw new Error('El precio debe ser un número mayor que 0');
+    }
 
     const totalPorcentaje = participantes.reduce((sum, p) => sum + p.porcentaje, 0);
     if (totalPorcentaje !== 100) {
@@ -34,7 +39,8 @@ class CrearCancionUseCase {
       artista,
       linkArchivo,
       participantes.map((p) => ({ ...p, usuarioId })),
-      new Date().toISOString()
+      new Date().toISOString(),
+      precioFinal
     );
 
     cancion.validarParticipantes();
@@ -56,6 +62,10 @@ class CrearCancionUseCase {
     const claveAcceso = await this.blockchainService.generarClaveAcceso(id);
     cancion.generarClaveAcceso(claveAcceso.valor);
     await this.cancionRepository.guardar(cancion);
+    // Persistir clave en ledger/simulación (si no, al listar se pierde)
+    if (typeof this.blockchainService.actualizarCancion === 'function') {
+      await this.blockchainService.actualizarCancion(cancion);
+    }
 
     return {
       cancion: cancion.toPlainObject(),

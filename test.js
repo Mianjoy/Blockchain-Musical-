@@ -20,6 +20,7 @@ async function ejecutarPruebas() {
       titulo: 'Melodía Eterna',
       artista: 'Banda Ejemplo',
       linkArchivo: 'https://storage.example.com/melodia-eterna.mp3',
+      precio: 9.99,
       participantes: [
         { rol: 'artista', nombre: 'Juan Pérez', porcentaje: 50 },
         { rol: 'productor', nombre: 'María García', porcentaje: 30 },

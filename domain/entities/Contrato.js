@@ -33,8 +33,11 @@ class Contrato {
       throw new Error('El contrato no está activo');
     }
 
-    const totalPorcentaje = this._participantes.reduce((sum, p) => sum + p.porcentaje, 0);
-    if (totalPorcentaje !== 100) {
+    const totalPorcentaje = this._participantes.reduce(
+      (sum, p) => sum + Number(p.porcentaje),
+      0
+    );
+    if (Math.abs(totalPorcentaje - 100) > 0.01) {
       throw new Error(`La suma de porcentajes debe ser 100%, actual: ${totalPorcentaje}%`);
     }
 
@@ -42,8 +45,8 @@ class Contrato {
       usuarioId: p.usuarioId,
       nombre: p.nombre,
       rol: p.rol,
-      porcentaje: p.porcentaje,
-      monto: (montoTotal * p.porcentaje) / 100
+      porcentaje: Number(p.porcentaje),
+      monto: (montoTotal * Number(p.porcentaje)) / 100
     }));
   }
 
@@ -70,7 +73,7 @@ class Contrato {
       obj.fechaCreacion
     );
     contrato._transacciones = obj.transacciones || [];
-    contrato._activo = obj.activo;
+    contrato._activo = obj.activo !== false;
     return contrato;
   }
 }

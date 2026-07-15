@@ -57,6 +57,36 @@ if [[ "${RC2}" -ne 0 ]]; then
   exit "${RC2}"
 fi
 
+# config.yaml NodeOUs debe existir ANTES de configtxgen
+# (si falta → "creator org unknown, creator is malformed")
+printInfo "Asegurando config.yaml NodeOUs en todos los MSP..."
+if command -v powershell.exe >/dev/null 2>&1 \
+  && [[ -f "${PROJECT_DIR}/scripts/windows/ensure-msp-config.ps1" ]]; then
+  powershell.exe -NoProfile -ExecutionPolicy Bypass \
+    -File "${PROJECT_DIR}/scripts/windows/ensure-msp-config.ps1" || true
+fi
+while IFS= read -r -d '' ca; do
+  msp_dir="$(dirname "$(dirname "$ca")")"
+  ca_name="$(basename "$ca")"
+  cfg="${msp_dir}/config.yaml"
+  cat >"${cfg}" <<EOF
+NodeOUs:
+  Enable: true
+  ClientOUIdentifier:
+    Certificate: cacerts/${ca_name}
+    OrganizationalUnitIdentifier: client
+  PeerOUIdentifier:
+    Certificate: cacerts/${ca_name}
+    OrganizationalUnitIdentifier: peer
+  AdminOUIdentifier:
+    Certificate: cacerts/${ca_name}
+    OrganizationalUnitIdentifier: admin
+  OrdererOUIdentifier:
+    Certificate: cacerts/${ca_name}
+    OrganizationalUnitIdentifier: orderer
+EOF
+done < <(find "${ROOT_DIR}/organizations" -type f -path '*/msp/cacerts/*' -print0 2>/dev/null || true)
+
 printInfo "Generando bloque de configuracion del canal ${CHANNEL_NAME}..."
 set +e
 fabricTools configtxgen \

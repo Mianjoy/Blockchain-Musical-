@@ -32,6 +32,9 @@ class ObtenerClaveAccesoUseCase {
       const fromChain = await this.blockchainService.obtenerCancion(cancionId);
       clave = fromChain?.claveAcceso;
     }
+    if (!clave && this.blockchainService._simStore?.claves) {
+      clave = this.blockchainService._simStore.claves.get(cancionId) || null;
+    }
 
     if (!clave) {
       throw new Error('La canción no tiene clave de acceso generada');

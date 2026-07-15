@@ -1,6 +1,6 @@
 # Red Hyperledger Fabric – Music Royalty
 
-Red de prueba **Fabric 2.5.15** + **CA 1.5.15**: Org1 (peer + CA), orderer, canal `mychannel` y chaincode `music-royalty`.
+Red de prueba **Fabric 2.5.16** + **CA 1.5.21**: Org1 (peer + CA), orderer, canal `mychannel` y chaincode `music-royalty`.
 
 ## Requisitos
 

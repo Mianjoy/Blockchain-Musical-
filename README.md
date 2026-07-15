@@ -32,13 +32,13 @@ ARRANCAR.bat
 | **`ARRANCAR.bat`** | Intenta Fabric real (Windows nativo); si falla → **DEMO/simulación** |
 | **`ARRANCAR-FABRIC.bat`** | Solo Fabric real (falla con diagnóstico si no puede; sin fallback) |
 | **`ARRANCAR-DEMO.bat`** | Solo simulación (Node.js; no necesita Docker) |
-| **`REPARAR-FABRIC.bat`** | Limpia y regenera la red Fabric 2.5.15 |
+| **`REPARAR-FABRIC.bat`** | Limpia y regenera la red Fabric 2.5.16 |
 | `run-system.bat` | Alias de `ARRANCAR.bat` |
 | `crear-acceso-directo.bat` | Acceso directo en el Escritorio |
 
 ### Fabric real en Windows (recomendado)
 
-El stack soportado es **Hyperledger Fabric 2.5.15 + CA 1.5.15**, orquestado con **CMD + Docker** (`scripts\windows\fabric-up.bat`). **No requiere Git Bash.**
+El stack soportado es **Hyperledger Fabric 2.5.16 + CA 1.5.21**, orquestado con **CMD + Docker** (`scripts\windows\fabric-up.bat`). **No requiere Git Bash.**
 
 ```text
 ARRANCAR-FABRIC.bat
@@ -142,7 +142,7 @@ Puedes crear un `.exe` “cara” con herramientas tipo *Bat to Exe* apuntando a
 
 | Herramienta | Uso |
 |-------------|-----|
-| **Docker Desktop** | Red Fabric 2.5.15 (obligatorio para Fabric real) |
+| **Docker Desktop** | Red Fabric 2.5.16 (obligatorio para Fabric real) |
 | **Node.js 18+** | API, frontend y wallet |
 | Git Bash | Opcional (solo scripts `.sh` legacy / Mac-Linux) |
 
@@ -375,11 +375,19 @@ El approve/commit ya trabaja **sin `waitForEvent`** y sondea `checkcommitreadine
 1. **`REPARAR-FABRIC.bat`** → **`ARRANCAR-FABRIC.bat`**
 2. O **`ARRANCAR-DEMO.bat`** (app usable en simulación)
 
+### Error: `creator org unknown, creator is malformed`
+
+La identidad Admin del CLI no encaja con el canal (MSP sin `config.yaml` NodeOUs, o canal/volumenes Docker de un intento anterior con otros certificados).
+
+1. Ejecuta **`REPARAR-FABRIC.bat`** (borra volúmenes + regenera crypto + `config.yaml`)
+2. Luego **`ARRANCAR-FABRIC.bat`**
+3. Revisa `fabric-network.log` si vuelve a fallar
+
 ### Error: `client version 1.25 is too old` / `Minimum supported API version is 1.40`
 
 Al **instalar el chaincode**, el peer intenta hacer `docker build`. Docker Desktop reciente exige API ≥ 1.40, y Fabric **2.5.4** usaba cliente 1.25.
 
-El proyecto ya usa **Fabric 2.5.15**. Para aplicar el cambio:
+El proyecto ya usa **Fabric 2.5.16** (LTS más reciente con cliente Docker moderno). Para aplicar el cambio:
 
 1. (Opcional pero recomendado) Ejecuta **`FIX-DOCKER-API.bat`** → en Docker Desktop **Apply & Restart**
 2. Ejecuta **`REPARAR-FABRIC.bat`** (obliga a bajar imágenes nuevas y regenerar red)

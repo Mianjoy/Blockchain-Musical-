@@ -1,7 +1,6 @@
 @echo off
 :: =============================================================================
-:: fabric-up.bat — Hyperledger Fabric 2.5.15 en Windows nativo (CMD + Docker)
-:: No depende de Git Bash ni de conversion de rutas MSYS.
+:: fabric-up.bat — Hyperledger Fabric 2.5.16 en Windows nativo (CMD + Docker)
 :: Uso: fabric-up.bat [up|down|clean]
 :: =============================================================================
 setlocal EnableDelayedExpansion
@@ -11,8 +10,8 @@ set "ROOT=%CD%"
 set "NET=%ROOT%\network"
 set "CC=%ROOT%\chaincode\music-royalty"
 set "LOG=%ROOT%\fabric-network.log"
-set "FABRIC_VER=2.5.15"
-set "CA_VER=1.5.15"
+set "FABRIC_VER=2.5.16"
+set "CA_VER=1.5.21"
 set "CHANNEL=mychannel"
 set "CC_NAME=music-royalty"
 set "CC_VER=1.0"
@@ -20,6 +19,7 @@ set "CC_SEQ=1"
 set "IMAGE_TAG=%FABRIC_VER%"
 set "CA_IMAGE_TAG=%CA_VER%"
 set "COMPOSE_PROJECT_NAME=musicroyalty"
+set "RECOVERY_DONE=0"
 
 set "MODE=%~1"
 if "%MODE%"=="" set "MODE=up"
@@ -54,12 +54,12 @@ set "CA_IMAGE_TAG=%CA_VER%"
 docker compose -f docker-compose-net.yaml down --volumes --remove-orphans >nul 2>&1
 popd
 for /f "tokens=*" %%i in ('docker ps -aq --filter "name=dev-peer" 2^>nul') do docker rm -f %%i >nul 2>&1
+for /f "tokens=*" %%i in ('docker images -q --filter "reference=dev-peer*" 2^>nul') do docker rmi -f %%i >nul 2>&1
 call :log "[OK] Red detenida"
 exit /b 0
 
 :do_clean
 call :do_down
-if errorlevel 1 exit /b 1
 call :log "[INFO] Limpiando artefactos..."
 if exist "%NET%\organizations\peerOrganizations" rmdir /s /q "%NET%\organizations\peerOrganizations"
 if exist "%NET%\organizations\ordererOrganizations" rmdir /s /q "%NET%\organizations\ordererOrganizations"
@@ -94,19 +94,26 @@ for %%I in (
   )
 )
 
+call :log "[2/7] Crypto / MSP..."
 if not exist "%NET%\channel-artifacts\%CHANNEL%.block" (
-  call :log "[2/7] Generando crypto / canal..."
   call "%ROOT%\scripts\windows\generate-crypto-native.bat"
   if errorlevel 1 (
     call :err "Fallo crypto. Activa File sharing de la unidad en Docker Desktop."
     exit /b 1
   )
 ) else (
-  call :log "[2/7] Artefactos crypto ya existen"
+  call :log "  Artefactos existentes; validando MSP config.yaml..."
   if not exist "%NET%\organizations\ordererOrganizations\example.com\orderers\orderer.example.com\msp" (
-    call :log "  MSP incompleto; regenerando..."
+    call :log "  MSP incompleto; regenerando crypto..."
     call "%ROOT%\scripts\windows\generate-crypto-native.bat"
     if errorlevel 1 exit /b 1
+  ) else (
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%ROOT%\scripts\windows\ensure-msp-config.ps1" >>"%LOG%" 2>&1
+    if errorlevel 1 (
+      call :log "  config.yaml incompleto; regenerando crypto..."
+      call "%ROOT%\scripts\windows\generate-crypto-native.bat"
+      if errorlevel 1 exit /b 1
+    )
   )
 )
 
@@ -147,13 +154,51 @@ goto wait_peer
 call :log "[OK] Peer listo"
 timeout /t 5 /nobreak >nul
 
+:: Validar identidad Admin del CLI (detecta MSP malformado / canal viejo)
+call :check_cli_identity
+if errorlevel 1 (
+  if "!RECOVERY_DONE!"=="0" (
+    call :log "[AVISO] Identidad/canal inconsistente (creator malformed). Reset completo..."
+    set "RECOVERY_DONE=1"
+    call :do_clean
+    goto do_up
+  )
+  call :err "Identidad MSP sigue invalida tras reset. Revisa fabric-network.log"
+  exit /b 1
+)
+
 docker exec fabric-cli peer channel list 2>nul | findstr /i "%CHANNEL%" >nul
 if errorlevel 1 (
   call :log "[5/7] Creando canal %CHANNEL%..."
   call :create_channel
-  if errorlevel 1 exit /b 1
+  if errorlevel 1 (
+    if "!RECOVERY_DONE!"=="0" (
+      call :log "[AVISO] Canal fallo; reset completo..."
+      set "RECOVERY_DONE=1"
+      call :do_clean
+      goto do_up
+    )
+    exit /b 1
+  )
 ) else (
-  call :log "[5/7] Canal %CHANNEL% ya existe"
+  call :log "[5/7] Canal %CHANNEL% ya existe; verificando lectura..."
+  docker exec fabric-cli peer channel getinfo -c %CHANNEL% >"%TEMP%\mr-chinfo.txt" 2>&1
+  findstr /i /c:"height:" "%TEMP%\mr-chinfo.txt" >nul
+  if errorlevel 1 (
+    findstr /i /c:"malformed" /c:"access denied" /c:"creator org" "%TEMP%\mr-chinfo.txt" >nul
+    if not errorlevel 1 (
+      if "!RECOVERY_DONE!"=="0" (
+        call :log "[AVISO] Canal existe pero Admin no es valido. Reset completo..."
+        type "%TEMP%\mr-chinfo.txt" >>"%LOG%"
+        set "RECOVERY_DONE=1"
+        call :do_clean
+        goto do_up
+      )
+    )
+    call :log "[AVISO] No se pudo leer height; se continua"
+  ) else (
+    call :log "[OK] Canal legible"
+  )
 )
 
 call :wait_channel_height
@@ -163,7 +208,16 @@ docker exec fabric-cli peer lifecycle chaincode querycommitted --channelID %CHAN
 if errorlevel 1 (
   call :log "[6/7] Desplegando chaincode %CC_NAME%..."
   call :deploy_cc
-  if errorlevel 1 exit /b 1
+  if errorlevel 1 (
+    findstr /i /c:"malformed" /c:"creator org" "%LOG%" >nul
+    if not errorlevel 1 if "!RECOVERY_DONE!"=="0" (
+      call :log "[AVISO] Deploy fallo por MSP. Reset completo..."
+      set "RECOVERY_DONE=1"
+      call :do_clean
+      goto do_up
+    )
+    exit /b 1
+  )
 ) else (
   call :log "[6/7] Chaincode ya committed"
 )
@@ -188,6 +242,23 @@ call :log "  Peer:    localhost:7051"
 call :log "  Orderer: localhost:7050"
 call :log "  Canal:   %CHANNEL%"
 call :log "  CC:      %CC_NAME%"
+exit /b 0
+
+:check_cli_identity
+:: Comprueba que el MSP Admin tiene config.yaml y que el CLI puede firmar
+docker exec fabric-cli sh -lc "test -f \"$CORE_PEER_MSPCONFIGPATH/config.yaml\" && test -d \"$CORE_PEER_MSPCONFIGPATH/signcerts\" && test -d \"$CORE_PEER_MSPCONFIGPATH/keystore\" && test -d \"$CORE_PEER_MSPCONFIGPATH/cacerts\"" >nul 2>&1
+if errorlevel 1 (
+  call :log "[AVISO] MSP Admin incompleto dentro del contenedor CLI"
+  exit /b 1
+)
+:: Si el canal no existe aun, channel list vacio es OK
+docker exec fabric-cli peer channel list >"%TEMP%\mr-clist.txt" 2>&1
+findstr /i /c:"malformed" /c:"creator org unknown" /c:"access denied" "%TEMP%\mr-clist.txt" >nul
+if not errorlevel 1 (
+  call :log "[AVISO] peer channel list rechazo identidad Admin"
+  type "%TEMP%\mr-clist.txt" >>"%LOG%"
+  exit /b 1
+)
 exit /b 0
 
 :create_channel
@@ -290,7 +361,14 @@ set /a _a=0
 :approve_loop
 set /a _a+=1
 call :log "  approveformyorg intento !_a!/5..."
-docker exec fabric-cli peer lifecycle chaincode approveformyorg -o orderer.example.com:7050 --channelID %CHANNEL% --name %CC_NAME% --version %CC_VER% --package-id !PKG_ID! --sequence %CC_SEQ% --tls --cafile %ORDERER_CA% --signature-policy OR('Org1MSP.peer') >>"%LOG%" 2>&1
+docker exec fabric-cli peer lifecycle chaincode approveformyorg -o orderer.example.com:7050 --channelID %CHANNEL% --name %CC_NAME% --version %CC_VER% --package-id !PKG_ID! --sequence %CC_SEQ% --tls --cafile %ORDERER_CA% --signature-policy OR('Org1MSP.peer') >"%TEMP%\mr-approve.txt" 2>&1
+type "%TEMP%\mr-approve.txt" >>"%LOG%"
+findstr /i /c:"malformed" /c:"creator org unknown" "%TEMP%\mr-approve.txt" >nul
+if not errorlevel 1 (
+  call :err "approve rechazo identidad Admin: creator malformed (MSP/canal inconsistente)"
+  type "%TEMP%\mr-approve.txt"
+  exit /b 1
+)
 timeout /t 6 /nobreak >nul
 docker exec fabric-cli peer lifecycle chaincode checkcommitreadiness --channelID %CHANNEL% --name %CC_NAME% --version %CC_VER% --sequence %CC_SEQ% --tls --cafile %ORDERER_CA% --signature-policy OR('Org1MSP.peer') --output json >"%TEMP%\mr-ready.json" 2>&1
 findstr /i "true" "%TEMP%\mr-ready.json" >nul

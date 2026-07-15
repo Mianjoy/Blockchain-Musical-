@@ -13,9 +13,9 @@ export CC_SEQUENCE="${CC_SEQUENCE:-1}"
 export CC_SRC_PATH="${PROJECT_DIR}/chaincode/music-royalty"
 export CC_RUNTIME_LANGUAGE=node
 # 2.5.4 usa Docker API 1.25 (falla con Docker Desktop moderno: "client version too old").
-# 2.5.15+ trae cliente Docker compatible con API >= 1.40.
-export FABRIC_VERSION="${FABRIC_VERSION:-2.5.15}"
-export CA_VERSION="${CA_VERSION:-1.5.15}"
+# 2.5.16 (LTS actual) trae cliente Docker compatible con API >= 1.40.
+export FABRIC_VERSION="${FABRIC_VERSION:-2.5.16}"
+export CA_VERSION="${CA_VERSION:-1.5.21}"
 
 export ORDERER_CA="${ROOT_DIR}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"
 export PEER0_ORG1_CA="${ROOT_DIR}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt"
