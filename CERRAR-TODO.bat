@@ -103,10 +103,10 @@ echo ==============================================================
 echo  API / Frontend / Fabric detenidos ^(o ya estaban apagados^).
 echo.
 echo  Para volver a arrancar:
-echo    ARRANCAR.bat        ^(menu Demo / Fabric / App^)
-echo    ARRANCAR-DEMO.bat   ^(solo simulacion^)
+echo    ARRANCAR.bat        ^(muestra menu de opciones^)
+echo    ARRANCAR.bat /demo  ^(solo simulacion, sin menu^)
 echo    FABRIC-UP.bat       ^(solo Fabric^)
-echo    APP-UP.bat          ^(API + UI^)
+echo    APP-UP.bat          ^(solo API + UI^)
 echo.
 pause
 exit /b 0

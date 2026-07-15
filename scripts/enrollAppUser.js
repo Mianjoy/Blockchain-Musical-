@@ -17,6 +17,7 @@ const ORG_PATH = path.join(
   'org1.example.com'
 );
 const USER_MSP = path.join(ORG_PATH, 'users', 'User1@org1.example.com', 'msp');
+const ADMIN_MSP = path.join(ORG_PATH, 'users', 'Admin@org1.example.com', 'msp');
 const PEER_TLS = path.join(ORG_PATH, 'peers', 'peer0.org1.example.com', 'tls', 'ca.crt');
 const ORDERER_TLS = path.join(
   NETWORK_ROOT,
@@ -106,6 +107,19 @@ function buildConnectionProfile({ peerHost, ordererHost, caHost }) {
         }
       }
     },
+    channels: {
+      mychannel: {
+        peers: {
+          'peer0.org1.example.com': {
+            endorsingPeer: true,
+            chaincodeQuery: true,
+            ledgerQuery: true,
+            eventSource: true
+          }
+        },
+        orderers: ['orderer.example.com']
+      }
+    },
     certificateAuthorities: {
       'ca.org1.example.com': {
         url: `https://${caHost}:7054`,
@@ -117,36 +131,45 @@ function buildConnectionProfile({ peerHost, ordererHost, caHost }) {
   };
 }
 
-async function importAppUser() {
-  const walletPath = path.join(PROJECT_ROOT, 'wallet');
-  fs.mkdirSync(walletPath, { recursive: true });
-
-  const wallet = await Wallets.newFileSystemWallet(walletPath);
-  const identityLabel = 'appUser';
-
-  const existing = await wallet.get(identityLabel);
-  if (existing) {
-    console.log(`[OK] Identidad '${identityLabel}' ya existe en wallet`);
-    return;
+async function importIdentity(wallet, label, mspPath) {
+  if (!fs.existsSync(mspPath)) {
+    throw new Error(`No existe MSP en ${mspPath}`);
   }
-
-  if (!fs.existsSync(USER_MSP)) {
-    throw new Error(
-      `No existe MSP de User1 en ${USER_MSP}. Ejecuta primero network/scripts/network.sh generate|up`
-    );
-  }
-
-  const cert = readCertFile(findIdentityCert(USER_MSP));
-  const key = readCertFile(findPrivateKey(USER_MSP));
-
+  const cert = readCertFile(findIdentityCert(mspPath));
+  const key = readCertFile(findPrivateKey(mspPath));
   const identity = {
     credentials: { certificate: cert, privateKey: key },
     mspId: 'Org1MSP',
     type: 'X.509'
   };
+  // Siempre sobrescribe: evita wallet vieja tras regenerar crypto
+  await wallet.put(label, identity);
+  console.log(`[OK] Identidad '${label}' importada/actualizada`);
+}
 
-  await wallet.put(identityLabel, identity);
-  console.log(`[OK] Identidad '${identityLabel}' importada en ${walletPath}`);
+async function importAppUser() {
+  const walletPath = path.join(PROJECT_ROOT, 'wallet');
+  fs.mkdirSync(walletPath, { recursive: true });
+
+  const force = process.env.FORCE_REENROLL === '1' || process.env.FORCE_REENROLL === 'true';
+  if (force) {
+    for (const f of fs.readdirSync(walletPath)) {
+      if (f === '.gitkeep') continue;
+      fs.rmSync(path.join(walletPath, f), { recursive: true, force: true });
+    }
+  }
+
+  const wallet = await Wallets.newFileSystemWallet(walletPath);
+
+  // Preferir Admin (Readers/Writers con OU admin) y también User1 como appUser
+  const mspForApp = fs.existsSync(ADMIN_MSP) ? ADMIN_MSP : USER_MSP;
+  await importIdentity(wallet, 'appUser', mspForApp);
+  if (fs.existsSync(USER_MSP) && mspForApp !== USER_MSP) {
+    await importIdentity(wallet, 'user1', USER_MSP);
+  }
+  if (fs.existsSync(ADMIN_MSP)) {
+    await importIdentity(wallet, 'admin', ADMIN_MSP);
+  }
 }
 
 async function main() {
@@ -156,7 +179,6 @@ async function main() {
     throw new Error('Certificados TLS no encontrados. Genera la red primero (FABRIC-UP.bat)');
   }
 
-  // Perfil para API en el HOST (Windows) → localhost
   const connectionHost = buildConnectionProfile({
     peerHost: 'localhost',
     ordererHost: 'localhost',
@@ -166,7 +188,6 @@ async function main() {
   fs.writeFileSync(connectionPath, JSON.stringify(connectionHost, null, 2));
   console.log(`[OK] connection.json (host/localhost) → ${connectionPath}`);
 
-  // Perfil para API en Docker dentro de la red Fabric → DNS de contenedores
   const connectionDocker = buildConnectionProfile({
     peerHost: 'peer0.org1.example.com',
     ordererHost: 'orderer.example.com',

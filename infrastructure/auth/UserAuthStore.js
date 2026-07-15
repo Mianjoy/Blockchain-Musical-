@@ -6,8 +6,10 @@ const crypto = require('crypto');
 const { validateNickname } = require('../../domain/utils/nickname');
 
 /**
- * Persistencia simple de usuarios (nickname @ + password hash).
+ * Persistencia simple de usuarios (nickname @ + password hash + recovery).
  * Archivo: data/users.json
+ *
+ * recoveryCode: se muestra UNA vez al registrar; solo se guarda el hash.
  */
 class UserAuthStore {
   constructor(filePath) {
@@ -55,6 +57,31 @@ class UserAuthStore {
     });
   }
 
+  _safeEqualHex(aHex, bHex) {
+    const a = Buffer.from(String(aHex || ''), 'hex');
+    const b = Buffer.from(String(bHex || ''), 'hex');
+    if (a.length === 0 || b.length === 0 || a.length !== b.length) {
+      return false;
+    }
+    return crypto.timingSafeEqual(a, b);
+  }
+
+  /**
+   * Código legible tipo MR-XXXX-XXXX-XXXX-XXXX (aleatorio).
+   */
+  _generateRecoveryCode() {
+    const raw = crypto.randomBytes(8).toString('hex').toUpperCase();
+    const parts = raw.match(/.{1,4}/g) || [raw];
+    return `MR-${parts.join('-')}`;
+  }
+
+  _normalizeRecoveryCode(code) {
+    return String(code || '')
+      .trim()
+      .toUpperCase()
+      .replace(/\s+/g, '');
+  }
+
   exists(nickname) {
     const v = validateNickname(nickname);
     if (!v.ok) return false;
@@ -75,15 +102,29 @@ class UserAuthStore {
 
     const salt = crypto.randomBytes(16).toString('hex');
     const hash = await this._hashPassword(String(password), salt);
+
+    const recoveryCode = this._generateRecoveryCode();
+    const recoverySalt = crypto.randomBytes(16).toString('hex');
+    const recoveryHash = await this._hashPassword(
+      this._normalizeRecoveryCode(recoveryCode),
+      recoverySalt
+    );
+
     const user = {
       nickname: v.nickname,
       salt,
       hash,
+      recoverySalt,
+      recoveryHash,
       createdAt: new Date().toISOString()
     };
     this._users.set(v.nickname, user);
     this._save();
-    return { nickname: v.nickname };
+
+    return {
+      nickname: v.nickname,
+      recoveryCode
+    };
   }
 
   async login(nicknameRaw, password) {
@@ -100,13 +141,62 @@ class UserAuthStore {
     }
 
     const hash = await this._hashPassword(String(password), user.salt);
-    const a = Buffer.from(hash, 'hex');
-    const b = Buffer.from(user.hash, 'hex');
-    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    if (!this._safeEqualHex(hash, user.hash)) {
       throw new Error('Nickname o contraseña incorrectos');
     }
 
     return { nickname: user.nickname };
+  }
+
+  /**
+   * Resetea la contraseña con nick + código de recuperación.
+   * Rota el código y devuelve uno nuevo (mostrar una vez).
+   */
+  async resetPasswordWithRecovery(nicknameRaw, recoveryCodeRaw, newPassword) {
+    const v = validateNickname(nicknameRaw);
+    if (!v.ok) throw new Error(v.error);
+
+    if (!newPassword || String(newPassword).length < 4) {
+      throw new Error('La contraseña debe tener al menos 4 caracteres');
+    }
+
+    const code = this._normalizeRecoveryCode(recoveryCodeRaw);
+    if (!code || code.length < 8) {
+      throw new Error('Nickname o código de recuperación incorrectos');
+    }
+
+    const user = this._users.get(v.nickname);
+    if (!user || !user.recoverySalt || !user.recoveryHash) {
+      throw new Error('Nickname o código de recuperación incorrectos');
+    }
+
+    const providedHash = await this._hashPassword(code, user.recoverySalt);
+    if (!this._safeEqualHex(providedHash, user.recoveryHash)) {
+      throw new Error('Nickname o código de recuperación incorrectos');
+    }
+
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = await this._hashPassword(String(newPassword), salt);
+
+    const newRecoveryCode = this._generateRecoveryCode();
+    const recoverySalt = crypto.randomBytes(16).toString('hex');
+    const recoveryHash = await this._hashPassword(
+      this._normalizeRecoveryCode(newRecoveryCode),
+      recoverySalt
+    );
+
+    user.salt = salt;
+    user.hash = hash;
+    user.recoverySalt = recoverySalt;
+    user.recoveryHash = recoveryHash;
+    user.updatedAt = new Date().toISOString();
+    this._users.set(v.nickname, user);
+    this._save();
+
+    return {
+      nickname: user.nickname,
+      recoveryCode: newRecoveryCode
+    };
   }
 }
 

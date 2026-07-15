@@ -56,9 +56,49 @@ export function AuthProvider({ children }) {
         throw new Error('La contraseña debe tener al menos 4 caracteres');
       }
       const data = await apiService.register(nickname, password);
-      const session = { nickname: data.nickname || nickname };
-      persist(session);
-      return session;
+      return {
+        nickname: data.nickname || nickname,
+        recoveryCode: data.recoveryCode || null
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const establishSession = (nicknameRaw) => {
+    const nickname = normalizeNickname(nicknameRaw);
+    if (!isValidNickname(nickname)) {
+      throw new Error(
+        'El nickname debe ser @usuario (3-30 caracteres: letras, números o _)'
+      );
+    }
+    persist({ nickname });
+  };
+
+  const recoverPassword = async (nicknameRaw, recoveryCode, newPassword) => {
+    setLoading(true);
+    try {
+      const nickname = normalizeNickname(nicknameRaw);
+      if (!isValidNickname(nickname)) {
+        throw new Error(
+          'El nickname debe ser @usuario (3-30 caracteres: letras, números o _)'
+        );
+      }
+      if (!recoveryCode || String(recoveryCode).trim().length < 8) {
+        throw new Error('El código de recuperación no es válido');
+      }
+      if (!newPassword || String(newPassword).length < 4) {
+        throw new Error('La contraseña debe tener al menos 4 caracteres');
+      }
+      const data = await apiService.recoverPassword(
+        nickname,
+        recoveryCode,
+        newPassword
+      );
+      return {
+        nickname: data.nickname || nickname,
+        recoveryCode: data.recoveryCode || null
+      };
     } finally {
       setLoading(false);
     }
@@ -95,6 +135,8 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!user?.nickname,
       loading,
       register,
+      recoverPassword,
+      establishSession,
       login,
       logout,
       normalizeNickname,

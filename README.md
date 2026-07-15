@@ -48,32 +48,32 @@ Al arrancar la API se siembra un **catálogo demo** con usuarios ficticios de la
 
 ```mermaid
 flowchart TB
-  subgraph host [PC Windows / Host]
-    UI[Frontend Vite :3001]
-    API[API Express :3000]
-    Wallet[wallet/ + connection.json]
-    Users[(data/users.json)]
+  subgraph host["PC Windows / Host"]
+    UI["Frontend Vite :3001"]
+    API["API Express :3000"]
+    Wallet["wallet + connection.json"]
+    Users[("data/users.json")]
   end
 
-  subgraph docker [Docker Desktop - red music-royalty-fabric]
-    CA[fabric-ca :7054]
-    ORD[orderer :7050]
-    PEER[peer0.org1 :7051]
-    CLI[fabric-cli]
-    CC[chaincode music-royalty]
+  subgraph docker["Docker Desktop - red music-royalty-fabric"]
+    CA["fabric-ca :7054"]
+    ORD["orderer :7050"]
+    PEER["peer0.org1 :7051"]
+    CLI["fabric-cli"]
+    CC["chaincode music-royalty"]
   end
 
-  UserBrowser[Navegador] -->|HTTP| UI
-  UI -->|/api proxy| API
+  UserBrowser["Navegador"] -->|HTTP| UI
+  UI -->|"/api proxy"| API
   API --> Users
   API -->|SDK fabric-network| Wallet
-  API -->|gRPC TLS localhost| PEER
-  API -->|gRPC TLS localhost| ORD
+  API -->|"gRPC TLS localhost"| PEER
+  API -->|"gRPC TLS localhost"| ORD
   PEER --> CC
   PEER --> ORD
   CLI --> PEER
   CLI --> ORD
-  CA -.->|MSP/certs generados en setup| Wallet
+  CA -.->|"MSP/certs en setup"| Wallet
 ```
 
 ### Componentes
@@ -99,23 +99,29 @@ flowchart TB
 
 ## 3. Diagramas de flujo
 
-### 3.1 Registro / Login
+### 3.1 Registro / Login / Recuperación
 
 ```mermaid
 flowchart TD
-  Start([Abrir app]) --> Gate{Sesión en localStorage?}
-  Gate -->|No| Login[LoginPage]
-  Gate -->|Sí| App[App protegida]
-  Login --> Mode{Modo}
-  Mode -->|Crear cuenta| Reg[POST /api/auth/register]
-  Mode -->|Entrar| Auth[POST /api/auth/login]
-  Reg --> Valid{Nickname ^@...$ único?}
-  Valid -->|No| Err[Error]
-  Valid -->|Sí| Save[(users.json + hash scrypt)]
-  Save --> Sess[Guardar sesión @nick]
-  Auth --> Check{Password OK?}
+  Start(["Abrir app"]) --> Gate{"Sesion en localStorage?"}
+  Gate -->|No| Login["LoginPage"]
+  Gate -->|Si| App["App protegida"]
+  Login --> Mode{"Modo"}
+  Mode -->|Crear cuenta| Reg["POST /api/auth/register"]
+  Mode -->|Entrar| Auth["POST /api/auth/login"]
+  Mode -->|Recuperar| Rec["POST /api/auth/recover"]
+  Reg --> Valid{"Nickname @ unico?"}
+  Valid -->|No| Err["Error"]
+  Valid -->|Si| Save[("users.json + hash scrypt")]
+  Save --> Code["Mostrar recoveryCode una vez"]
+  Code --> Sess["Guardar sesion @nick"]
+  Auth --> Check{"Password OK?"}
   Check -->|No| Err
-  Check -->|Sí| Sess
+  Check -->|Si| Sess
+  Rec --> RecOk{"Codigo recuperacion OK?"}
+  RecOk -->|No| Err
+  RecOk -->|Si| NewPass["Nueva password + nuevo codigo"]
+  NewPass --> Login
   Sess --> App
 ```
 
@@ -123,53 +129,53 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  U[@usuario logueado] --> Form[Formulario CreateSong]
-  Form --> ValUI{Título URL precio + participantes @ + % = 100?}
-  ValUI -->|No| Fix[Corregir formulario]
-  ValUI -->|Sí| API[POST /api/canciones]
-  API --> UC[CrearCancionUseCase]
-  UC --> ValBE{Cada participante es @válido?}
-  ValBE -->|No| Err400[400]
-  ValBE -->|Sí| Repo[Guardar Cancion + Contrato]
-  Repo --> BC[registrarCancion / registrarContrato]
-  BC --> Ledger[(Fabric o simulación)]
-  Ledger --> Key[generarClaveAcceso]
-  Key --> Notif[Notificación lanzamiento]
-  Notif --> OK([Canción en catálogo])
+  U["@usuario logueado"] --> Form["Formulario CreateSong"]
+  Form --> ValUI{"Titulo, URL, precio, participantes @, suma 100?"}
+  ValUI -->|No| Fix["Corregir formulario"]
+  ValUI -->|Si| API["POST /api/canciones"]
+  API --> UC["CrearCancionUseCase"]
+  UC --> ValBE{"Cada participante es @ valido?"}
+  ValBE -->|No| Err400["400"]
+  ValBE -->|Si| Repo["Guardar Cancion + Contrato"]
+  Repo --> BC["registrarCancion / registrarContrato"]
+  BC --> Ledger[("Fabric o simulacion")]
+  Ledger --> Key["generarClaveAcceso"]
+  Key --> Notif["Notificacion lanzamiento"]
+  Notif --> OK(["Cancion en catalogo"])
 ```
 
 ### 3.3 Compra y distribución de regalías
 
 ```mermaid
 flowchart TD
-  Buyer[@comprador] --> Detail[SongDetail: Comprar]
-  Detail --> Buy[POST /api/compras]
-  Buy --> ValNick{compradorId es @?}
-  ValNick -->|No| Err
-  ValNick -->|Sí| UC[RegistrarCompraUseCase]
-  UC --> Price[Usar precio de la canción]
-  Price --> Dist[Contrato.distribuirRegalias]
-  Dist --> Tx[Transacción + distribución por @nick]
-  Tx --> Ledger[(Ledger / sim)]
-  Ledger --> Key[Devolver claveAcceso]
-  Key --> Notif[Notificación venta]
-  Notif --> Mine[GET /api/compras?compradorId=@nick]
-  Mine --> UI[Mis Compras]
+  Buyer["@comprador"] --> Detail["SongDetail: Comprar"]
+  Detail --> Buy["POST /api/compras"]
+  Buy --> ValNick{"compradorId es @?"}
+  ValNick -->|No| Err["Error"]
+  ValNick -->|Si| UC["RegistrarCompraUseCase"]
+  UC --> Price["Usar precio de la cancion"]
+  Price --> Dist["Contrato.distribuirRegalias"]
+  Dist --> Tx["Transaccion + distribucion por @nick"]
+  Tx --> Ledger[("Ledger / sim")]
+  Ledger --> Key["Devolver claveAcceso"]
+  Key --> Notif["Notificacion venta"]
+  Notif --> Mine["GET /api/compras?compradorId=@nick"]
+  Mine --> UI["Mis Compras"]
 ```
 
 ### 3.4 Arranque del sistema (Windows)
 
 ```mermaid
 flowchart LR
-  A[FABRIC-UP.bat] --> D[Docker: CA Peer Orderer CLI]
-  D --> C[Crypto + canal + chaincode]
-  C --> E[enroll → connection.json + wallet]
-  E --> B[APP-UP.bat]
-  B --> API[node index.js + SEED_DEMO]
-  B --> UI[npm run dev :3001]
-  API --> H{Peer :7051?}
-  H -->|Sí| F[Modo FABRIC]
-  H -->|No| S[Modo SIMULACIÓN]
+  A["FABRIC-UP.bat"] --> D["Docker: CA Peer Orderer CLI"]
+  D --> C["Crypto + canal + chaincode"]
+  C --> E["enroll: connection.json + wallet"]
+  E --> B["APP-UP.bat"]
+  B --> API["node index.js + SEED_DEMO"]
+  B --> UI["npm run dev :3001"]
+  API --> H{"Peer :7051?"}
+  H -->|Si| F["Modo FABRIC"]
+  H -->|No| S["Modo SIMULACION"]
 ```
 
 ---
@@ -227,8 +233,9 @@ cd frontend && npm install
 | `FABRIC-DOWN.bat` | Solo apaga Fabric |
 | `APP-UP.bat` | API + frontend |
 | `ARRANCAR-DEMO.bat` | Solo simulación (sin Docker) |
-| `ARRANCAR.bat` | Menú Demo / Fabric / Fabric+App |
-| `CERRAR-TODO.bat` | Cierra API, UI y Fabric |
+| `ARRANCAR.bat` | Menú de opciones: Fabric+App, DEMO, solo Fabric o solo App. Args: `/demo`, `/fabric`, `/app` |
+| `CERRAR-TODO.bat` / `DETENER.bat` | Cierra API, UI y Fabric |
+| `crear-acceso-directo.bat` | Icono en el Escritorio apuntando a `ARRANCAR.bat` |
 | `REPARAR-FABRIC.bat` | Limpia y regenera la red |
 | `FIX-DOCKER-API.bat` | Mitiga error API Docker 1.25 al instalar chaincode |
 | `DIAGNOSTICO.bat` | Prueba Docker y montaje de volúmenes |
@@ -274,8 +281,9 @@ docker-compose.app.yml            # API opcional en la misma red Docker
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| `POST` | `/api/auth/register` | Alta `@nick` + password |
+| `POST` | `/api/auth/register` | Alta `@nick` + password → devuelve `recoveryCode` (una vez) |
 | `POST` | `/api/auth/login` | Login |
+| `POST` | `/api/auth/recover` | Reset clave con nick + código de recuperación |
 | `GET` | `/api/auth/check/:nickname` | Disponibilidad de nick |
 | `GET` | `/api/canciones` | Listar |
 | `GET` | `/api/canciones/:id` | Detalle |
@@ -379,7 +387,9 @@ node scripts\enrollAppUser.js
 | Docker no en PATH / no responde | Abrir Docker Desktop en verde; `FABRIC-UP.bat` espera el CLI |
 | Error volúmenes / 125 | File sharing de la unidad del repo en Docker Desktop |
 | `client version 1.25 is too old` | `FIX-DOCKER-API.bat` → Apply & Restart → `REPARAR-FABRIC.bat` |
+| `discovery error: access denied` / `unknown authority` | Crypto/volumen desalineados: `REPARAR-FABRIC.bat` (borra volúmenes Docker + regenera MSP). Luego `APP-UP.bat` |
 | Canal sin `height` ilegible | Ya hay auto-reset; si falla: `REPARAR-FABRIC.bat` |
+| API en simulación con Fabric “arriba” | Ejecuta `REPARAR-FABRIC.bat` y arranca con `ARRANCAR.bat` (modo Fabric estricto) |
 | API busca `connection.json` mal | Debe estar en la **raíz del repo** (generado por `FABRIC-UP`) |
 | Mis compras genéricas | Ya se listan por `@` real; reinicia API tras actualizar |
 | Catálogo vacío | Reinicia API (`SEED_DEMO=true`) o `POST /api/admin/seed-demo` |

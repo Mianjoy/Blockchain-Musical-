@@ -69,7 +69,17 @@ class HyperledgerFabricService extends IBlockchainService {
 
     try {
       const wallet = await Wallets.newFileSystemWallet(this.config.walletPath);
-      const identity = await wallet.get(this.config.identity);
+      let identityLabel = this.config.identity;
+      let identity = await wallet.get(identityLabel);
+      if (!identity) {
+        for (const alt of ['admin', 'user1', 'appUser']) {
+          identity = await wallet.get(alt);
+          if (identity) {
+            identityLabel = alt;
+            break;
+          }
+        }
+      }
       if (!identity) {
         throw new Error(
           `Identidad '${this.config.identity}' no encontrada en wallet. Ejecuta: node scripts/enrollAppUser.js`
@@ -77,34 +87,68 @@ class HyperledgerFabricService extends IBlockchainService {
       }
 
       const ccp = JSON.parse(fs.readFileSync(connectionPath, 'utf8'));
-      this.gateway = new Gateway();
-      await this.gateway.connect(ccp, {
-        wallet,
-        identity: this.config.identity,
-        discovery: {
-          enabled: true,
-          asLocalhost: this.config.asLocalhost !== false
+      const asLocalhost = this.config.asLocalhost !== false;
+
+      // 1) Discovery ON (normal). 2) Si access denied / discovery falla → peers del CCP.
+      const modes = [
+        { enabled: true, asLocalhost, label: 'discovery' },
+        { enabled: false, asLocalhost, label: 'static-peers' }
+      ];
+
+      let lastError = null;
+      for (const mode of modes) {
+        try {
+          if (this.gateway) {
+            try {
+              this.gateway.disconnect();
+            } catch (_) {
+              /* ignore */
+            }
+            this.gateway = null;
+          }
+          this.gateway = new Gateway();
+          await this.gateway.connect(ccp, {
+            wallet,
+            identity: identityLabel,
+            discovery: {
+              enabled: mode.enabled,
+              asLocalhost: mode.asLocalhost
+            }
+          });
+
+          this.network = await this.gateway.getNetwork(this.config.channelName);
+          this.contract = this.network.getContract(this.config.chaincodeName);
+          this._modoSimulacion = false;
+
+          fabricLog.event('CONEXION', 'Gateway conectado a Hyperledger Fabric', {
+            canal: this.config.channelName,
+            chaincode: this.config.chaincodeName,
+            identidad: identityLabel,
+            perfil: connectionPath,
+            asLocalhost,
+            discovery: mode.enabled,
+            modo: mode.label
+          });
+
+          console.log('Conexión a Hyperledger Fabric establecida correctamente');
+          console.log(`  Canal: ${this.config.channelName}`);
+          console.log(`  Chaincode: ${this.config.chaincodeName}`);
+          console.log(`  Identidad: ${identityLabel}`);
+          console.log(`  Perfil: ${connectionPath}`);
+          console.log(`  asLocalhost: ${asLocalhost}`);
+          console.log(`  discovery: ${mode.enabled} (${mode.label})`);
+          return true;
+        } catch (modeErr) {
+          lastError = modeErr;
+          const msg = String(modeErr.message || modeErr);
+          console.warn(`[Fabric] Fallo modo ${mode.label}: ${msg}`);
+          if (!/access denied|discovery/i.test(msg) && mode.enabled) {
+            // Otros errores con discovery: igual intentar static
+            continue;
+          }
         }
-      });
-
-      this.network = await this.gateway.getNetwork(this.config.channelName);
-      this.contract = this.network.getContract(this.config.chaincodeName);
-      this._modoSimulacion = false;
-
-      fabricLog.event('CONEXION', 'Gateway conectado a Hyperledger Fabric', {
-        canal: this.config.channelName,
-        chaincode: this.config.chaincodeName,
-        identidad: this.config.identity,
-        perfil: connectionPath,
-        asLocalhost: this.config.asLocalhost !== false
-      });
-
-      console.log('Conexión a Hyperledger Fabric establecida correctamente');
-      console.log(`  Canal: ${this.config.channelName}`);
-      console.log(`  Chaincode: ${this.config.chaincodeName}`);
-      console.log(`  Perfil: ${connectionPath}`);
-      console.log(`  asLocalhost: ${this.config.asLocalhost !== false}`);
-      return true;
+      }
+      throw lastError || new Error('No se pudo conectar al canal');
     } catch (error) {
       console.error('Error inicializando Hyperledger Fabric:', error.message);
       fabricLog.event('CONEXION', 'Fallo al conectar Fabric', { error: error.message });

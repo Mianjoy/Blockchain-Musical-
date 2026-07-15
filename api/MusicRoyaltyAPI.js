@@ -52,6 +52,7 @@ class MusicRoyaltyAPI {
     // Auth: nickname @ + password
     this.app.post('/api/auth/register', this.registrarUsuario.bind(this));
     this.app.post('/api/auth/login', this.loginUsuario.bind(this));
+    this.app.post('/api/auth/recover', this.recuperarContrasena.bind(this));
     this.app.get('/api/auth/check/:nickname', this.verificarNickname.bind(this));
 
     // Rutas de canciones
@@ -146,6 +147,29 @@ class MusicRoyaltyAPI {
       });
     } catch (error) {
       error.statusCode = 401;
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/auth/recover
+   * Body: { nickname, recoveryCode, newPassword }
+   */
+  async recuperarContrasena(req, res, next) {
+    try {
+      const { nickname, recoveryCode, newPassword } = req.body || {};
+      const result = await this.authStore.resetPasswordWithRecovery(
+        nickname,
+        recoveryCode,
+        newPassword
+      );
+      res.json({
+        mensaje:
+          'Contraseña actualizada. Guarda el nuevo código de recuperación; el anterior ya no sirve.',
+        datos: result
+      });
+    } catch (error) {
+      error.statusCode = 400;
       next(error);
     }
   }

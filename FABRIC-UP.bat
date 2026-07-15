@@ -7,6 +7,9 @@ chcp 65001 >nul 2>nul
 title Music Royalty - FABRIC UP
 cd /d "%~dp0"
 set "ROOT=%CD%"
+set "NOPAUSE=0"
+if /i "%~1"=="/nopause" set "NOPAUSE=1"
+if /i "%~1"=="/from-arrancar" set "NOPAUSE=1"
 
 echo.
 echo ==============================================================
@@ -39,10 +42,10 @@ if errorlevel 1 (
       echo  3^) Cierra y abre una NUEVA ventana CMD y vuelve a FABRIC-UP.bat
       echo  4^) O ejecuta: install-dependencies.bat
       echo.
-      pause
+      if "!NOPAUSE!"=="0" pause
       exit /b 1
     )
-    timeout /t 5 /nobreak >nul
+    ping -n 6 127.0.0.1 >nul
     goto wait_cli
   ) else (
     echo.
@@ -51,7 +54,7 @@ if errorlevel 1 (
     echo         https://www.docker.com/products/docker-desktop/
     echo.
     start "" "https://www.docker.com/products/docker-desktop/"
-    pause
+    if "!NOPAUSE!"=="0" pause
     exit /b 1
   )
 )
@@ -71,10 +74,10 @@ if errorlevel 1 (
   if not errorlevel 1 goto docker_ok
   if !_i! GEQ 36 (
     echo [ERROR] Docker Desktop no respondio. Deja el icono en verde y reintenta.
-    pause
+    if "!NOPAUSE!"=="0" pause
     exit /b 1
   )
-  timeout /t 5 /nobreak >nul
+  ping -n 6 127.0.0.1 >nul
   goto wait_d
 )
 :docker_ok
@@ -86,7 +89,7 @@ if errorlevel 1 (
 where node >nul 2>nul
 if errorlevel 1 (
   echo [ERROR] Node.js necesario para wallet ^(enrollAppUser.js^).
-  pause
+  if "!NOPAUSE!"=="0" pause
   exit /b 1
 )
 
@@ -103,7 +106,7 @@ if errorlevel 1 (
   echo Si el error es Docker API 1.25:
   echo   FIX-DOCKER-API.bat  →  Apply ^& Restart en Docker Desktop
   echo.
-  pause
+  if "!NOPAUSE!"=="0" pause
   exit /b 1
 )
 
@@ -118,5 +121,5 @@ echo.
 echo  Siguiente: APP-UP.bat
 echo  Detener:   FABRIC-DOWN.bat
 echo.
-pause
+if "!NOPAUSE!"=="0" pause
 exit /b 0

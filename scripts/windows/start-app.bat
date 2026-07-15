@@ -44,15 +44,28 @@ if /i "%MODE%"=="simulation" (
   set "ALLOW_SIMULATION=true"
   set "FABRIC_AS_LOCALHOST=true"
 ) else (
-  echo [INFO] Modo FABRIC ^(API host → peer localhost:7051^)
+  echo [INFO] Modo FABRIC estricto ^(sin fallback a simulacion^)
   set "ALLOW_SIMULATION=false"
   set "FABRIC_AS_LOCALHOST=true"
+  if not exist "%ROOT%\connection.json" (
+    echo [ERROR] Falta connection.json. Ejecuta FABRIC-UP.bat o REPARAR-FABRIC.bat
+    exit /b 1
+  )
+  if not exist "%ROOT%\wallet\appUser.id" if not exist "%ROOT%\wallet\appUser" (
+    echo [INFO] Regenerando wallet...
+    set "FORCE_REENROLL=1"
+    pushd "%ROOT%"
+    node scripts\enrollAppUser.js
+    if errorlevel 1 (popd & exit /b 1)
+    popd
+  )
 )
 
 echo [INFO] Iniciando API...
 start "MusicRoyalty-API" /D "%ROOT%" cmd /k "set ALLOW_SIMULATION=%ALLOW_SIMULATION%&& set FABRIC_AS_LOCALHOST=%FABRIC_AS_LOCALHOST%&& set CONNECTION_PROFILE=%ROOT%\connection.json&& set CHANNEL_NAME=mychannel&& set CHAINCODE_NAME=music-royalty&& set SEED_DEMO=true&& set PORT=3000&& set HOST=0.0.0.0&& node index.js"
 
-timeout /t 5 /nobreak >nul
+:: ping evita el fallo de "timeout" cuando stdin esta redirigido
+ping -n 6 127.0.0.1 >nul
 
 echo [INFO] Iniciando Frontend...
 start "MusicRoyalty-UI" /D "%ROOT%\frontend" cmd /k "npm run dev -- --host 0.0.0.0 --port 3001"
@@ -65,7 +78,7 @@ for /L %%i in (1,1,40) do (
     set "READY=1"
     goto app_ok
   )
-  timeout /t 2 /nobreak >nul
+  ping -n 3 127.0.0.1 >nul
 )
 
 :app_ok

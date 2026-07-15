@@ -45,6 +45,15 @@ class ApiService {
     return response.data?.datos || response.data;
   }
 
+  async recoverPassword(nickname, recoveryCode, newPassword) {
+    const response = await this.api.post('/auth/recover', {
+      nickname,
+      recoveryCode,
+      newPassword
+    });
+    return response.data?.datos || response.data;
+  }
+
   async checkNickname(nickname) {
     const encoded = encodeURIComponent(nickname);
     const response = await this.api.get(`/auth/check/${encoded}`);
