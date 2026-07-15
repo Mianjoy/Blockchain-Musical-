@@ -47,9 +47,15 @@ class BlockchainCancionRepository extends ICancionRepository {
       const fromChain = await this.blockchainService.obtenerTodasLasCanciones();
       if (Array.isArray(fromChain) && fromChain.length > 0) {
         for (const item of fromChain) {
+          const prev = this._cache.get(item.id);
           const entity = Cancion.fromPlainObject(item);
-          if (item.claveAcceso) {
-            entity._claveAcceso = item.claveAcceso;
+          // No pisar clave que ya teníamos en memoria si el ledger viene sin ella
+          if (!entity.claveAcceso && prev?.claveAcceso) {
+            entity._claveAcceso = prev.claveAcceso;
+          }
+          if (!entity.claveAcceso && this.blockchainService._simStore?.claves) {
+            const k = this.blockchainService._simStore.claves.get(item.id);
+            if (k) entity._claveAcceso = k;
           }
           this._cache.set(entity.id, entity);
         }

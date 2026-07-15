@@ -25,6 +25,10 @@ class Contrato {
     if (!this._activo) {
       throw new Error('El contrato no está activo');
     }
+    const id = transaccion && transaccion.id;
+    if (id && this._transacciones.some((t) => t && t.id === id)) {
+      return; // idempotente: no duplicar
+    }
     this._transacciones.push(transaccion);
   }
 
@@ -33,8 +37,11 @@ class Contrato {
       throw new Error('El contrato no está activo');
     }
 
-    const totalPorcentaje = this._participantes.reduce((sum, p) => sum + p.porcentaje, 0);
-    if (totalPorcentaje !== 100) {
+    const totalPorcentaje = this._participantes.reduce(
+      (sum, p) => sum + Number(p.porcentaje),
+      0
+    );
+    if (Math.abs(totalPorcentaje - 100) > 0.01) {
       throw new Error(`La suma de porcentajes debe ser 100%, actual: ${totalPorcentaje}%`);
     }
 
@@ -42,8 +49,8 @@ class Contrato {
       usuarioId: p.usuarioId,
       nombre: p.nombre,
       rol: p.rol,
-      porcentaje: p.porcentaje,
-      monto: (montoTotal * p.porcentaje) / 100
+      porcentaje: Number(p.porcentaje),
+      monto: (montoTotal * Number(p.porcentaje)) / 100
     }));
   }
 
@@ -55,9 +62,13 @@ class Contrato {
     return {
       id: this._id,
       cancionId: this._cancionId,
-      participantes: this._participantes,
+      participantes: this._participantes.map((p) => ({ ...p })),
       fechaCreacion: this._fechaCreacion,
-      transacciones: this._transacciones,
+      // Copia defensiva: si se comparte la misma referencia con el store
+      // de simulación, un segundo push duplica la compra.
+      transacciones: this._transacciones.map((t) =>
+        typeof t === 'object' && t !== null ? { ...t } : t
+      ),
       activo: this._activo
     };
   }
@@ -70,7 +81,7 @@ class Contrato {
       obj.fechaCreacion
     );
     contrato._transacciones = obj.transacciones || [];
-    contrato._activo = obj.activo;
+    contrato._activo = obj.activo !== false;
     return contrato;
   }
 }

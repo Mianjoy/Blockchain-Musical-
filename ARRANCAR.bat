@@ -1,54 +1,41 @@
 @echo off
 setlocal EnableDelayedExpansion
-chcp 65001 >nul
-title Music Royalty - Arranque con un clic
+chcp 65001 >nul 2>nul
+title Music Royalty - Arrancar
 cd /d "%~dp0"
 
 echo.
-echo ================================================================
-echo   MUSIC ROYALTY BLOCKCHAIN
-echo   Arranque automatico para Windows
-echo ================================================================
+echo ==============================================================
+echo  MUSIC ROYALTY — ARRANQUE SEPARADO
+echo ==============================================================
 echo.
-echo Este asistente:
-echo   1. Revisa e instala dependencias (Node, Git Bash, Docker, npm)
-echo   2. Levanta Hyperledger Fabric
-echo   3. Inicia la API y el frontend
-echo   4. Abre el navegador
+echo  Fabric y la App son independientes:
 echo.
-echo ----------------------------------------------------------------
+echo    [1] Solo APP / DEMO^(sin Docker^)     — recomendado para UI
+echo    [2] Solo FABRIC ^(contenedores^)     — red blockchain
+echo    [3] FABRIC + APP conectados
+echo    [4] Salir
+echo.
+choice /C 1234 /N /M "Elige opcion [1-4]: "
+set "OPT=!ERRORLEVEL!"
 
-:: ------------------------------------------------------------------
-:: Paso 1 — Dependencias (modo automatico)
-:: ------------------------------------------------------------------
-echo.
-echo [PASO 1/2] Preparando dependencias...
-echo.
-call "%~dp0install-dependencies-auto.bat"
-set "DEP_ERR=!ERRORLEVEL!"
-
-if not "!DEP_ERR!"=="0" (
-  echo.
-  echo ================================================================
-  echo   FALTAN DEPENDENCIAS
-  echo ================================================================
-  echo.
-  echo Completa lo pendiente, reinicia el PC si Docker lo pidio,
-  echo y vuelve a hacer doble clic en:
-  echo.
-  echo     ARRANCAR.bat
-  echo.
-  echo Guia detallada: lee la seccion "Windows - un solo clic" del README.md
-  echo.
-  pause
-  exit /b 1
+if "!OPT!"=="1" (
+  call "%~dp0ARRANCAR-DEMO.bat"
+  exit /b !ERRORLEVEL!
 )
-
-:: ------------------------------------------------------------------
-:: Paso 2 — Arranque del sistema
-:: ------------------------------------------------------------------
-echo.
-echo [PASO 2/2] Arrancando Fabric + API + Frontend...
-echo.
-call "%~dp0start-system.bat"
-exit /b %ERRORLEVEL%
+if "!OPT!"=="2" (
+  call "%~dp0FABRIC-UP.bat"
+  exit /b !ERRORLEVEL!
+)
+if "!OPT!"=="3" (
+  call "%~dp0FABRIC-UP.bat"
+  if errorlevel 1 (
+    echo.
+    echo Fabric fallo — puedes seguir con APP en simulacion:
+    call "%~dp0APP-UP.bat"
+    exit /b !ERRORLEVEL!
+  )
+  call "%~dp0APP-UP.bat"
+  exit /b !ERRORLEVEL!
+)
+exit /b 0

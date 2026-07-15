@@ -13,6 +13,8 @@ Organizations:
       Admins:
         Type: Signature
         Rule: "OR('OrdererMSP.admin')"
+    OrdererEndpoints:
+      - orderer.example.com:7050
 
   - &Org1
     Name: Org1MSP
@@ -37,6 +39,7 @@ Organizations:
 
 Capabilities:
   Channel: &ChannelCapabilities
+    # Fabric 2.5.x LTS (fabric-tools 3.x ya no existe en Docker Hub)
     V2_0: true
   Orderer: &OrdererCapabilities
     V2_0: true

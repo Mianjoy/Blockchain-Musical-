@@ -1,63 +1,59 @@
 # Red Hyperledger Fabric – Music Royalty
 
-Red de prueba **Fabric 2.5** embebida en el proyecto: Org1 (peer + CA), orderer etcdraft, canal `mychannel` y chaincode `music-royalty`.
+Red de prueba **Fabric 2.5.16** + **CA 1.5.21**: Org1 (peer + CA), orderer, canal `mychannel` y chaincode `music-royalty`.
+
+> `fabric-tools:3.x` ya no existe en Docker Hub (imagen deprecada por Hyperledger). Se usa la línea 2.5 LTS.
 
 ## Requisitos
 
 - Docker Desktop (WSL2 recomendado en Windows)
-- Git Bash o WSL (para `network/scripts/*.sh`)
 - Node.js 18+ (API, frontend y wallet)
+- Git Bash: solo si usas los scripts `.sh` (opcional en Windows)
 
-## Arranque rápido (Windows)
+## Arranque rápido (Windows nativo)
 
-1. Descarga el ZIP del repo y descomprímelo.
-2. Doble clic en **`ARRANCAR.bat`** (instala deps + Fabric + app).
-3. Para apagar: **`DETENER.bat`**.
-
-Detalle completo: ver sección **Windows — arranque con un solo clic** en el [README principal](../README.md).
+No requiere Git Bash. Orquestación: `scripts\windows\fabric-up.bat` (CMD + Docker).
 
 ```bat
-ARRANCAR.bat
-DETENER.bat
+ARRANCAR-FABRIC.bat
 ```
 
-Esto:
-
-1. Verifica Docker / Git Bash / Node
-2. Genera crypto + canal
-3. Levanta CA, orderer, peer y CLI
-4. Despliega el chaincode `music-royalty`
-5. Escribe `connection.json` e importa `appUser` en `wallet/`
-6. Arranca API (`:3000`) y frontend (`:3001`) **sin simulación**
-
-Detener:
+Si hubo un fallo previo:
 
 ```bat
-stop-system.bat
+REPARAR-FABRIC.bat
+ARRANCAR-FABRIC.bat
 ```
 
-## Comandos manuales
+Alternativas:
+
+```bat
+ARRANCAR.bat          :: intenta Fabric; si falla → DEMO
+ARRANCAR-DEMO.bat     :: solo simulacion
+DETENER.bat           :: apaga API + Fabric
+```
+
+Detalle: [README principal](../README.md).
+
+### Comandos Fabric (Windows CMD)
+
+```bat
+scripts\windows\fabric-up.bat up
+scripts\windows\fabric-up.bat down
+scripts\windows\fabric-up.bat clean
+scripts\windows\generate-crypto-native.bat
+node scripts\enrollAppUser.js
+```
+
+## Comandos manuales (bash / Mac / Linux)
 
 ```bash
-# Levantar red + canal + chaincode + wallet
 bash network/scripts/network.sh up
-
-# Solo crypto
 bash network/scripts/network.sh generate
-
-# Solo canal
 bash network/scripts/network.sh channel
-
-# Solo chaincode
 bash network/scripts/network.sh deployCC
-
-# Regenerar connection.json + wallet
 bash network/scripts/network.sh enroll
-
-# Bajar red
 bash network/scripts/network.sh down
-
-# Borrar artefactos + volúmenes
 bash network/scripts/network.sh clean
 ```
 
@@ -87,7 +83,6 @@ network/
   configtx/configtx.yaml
   organizations/cryptogen/
   scripts/network.sh
+scripts/windows/fabric-up.bat
 chaincode/music-royalty/
-connection.json          # generado
-wallet/                  # generado (appUser)
 ```

@@ -1,8 +1,10 @@
 version: '3.8'
 
-# Compose de la aplicación (API + frontend).
-# La red Fabric se levanta aparte con network/docker-compose-net.yaml
-# vía start-system.bat / network/scripts/network.sh
+# OBSOLETO como compose unico.
+# Usa:
+#   docker-compose.fabric.yml  → solo Fabric
+#   docker-compose.app.yml     → solo API (conectada a red music-royalty-fabric)
+# En Windows preferir: FABRIC-UP.bat + APP-UP.bat
 
 services:
   app:
@@ -12,34 +14,26 @@ services:
     container_name: music-royalty-app
     ports:
       - "3000:3000"
-      - "3001:3001"
     environment:
       - NODE_ENV=development
       - PORT=3000
       - HOST=0.0.0.0
       - CHANNEL_NAME=mychannel
       - CHAINCODE_NAME=music-royalty
-      # Por defecto NO simula: la app en contenedor necesita connection.json apuntando a la red Docker
       - ALLOW_SIMULATION=${ALLOW_SIMULATION:-false}
-      - VITE_API_URL=http://localhost:3000/api
+      - FABRIC_AS_LOCALHOST=false
+      - CONNECTION_PROFILE=/app/connection-docker.json
     volumes:
-      - .:/app
-      - /app/node_modules
-      - /app/frontend/node_modules
       - ./wallet:/app/wallet
-      - ./connection.json:/app/connection.json
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-      - "peer0.org1.example.com:host-gateway"
-      - "orderer.example.com:host-gateway"
-      - "ca.org1.example.com:host-gateway"
+      - ./connection.json:/app/connection.json:ro
+      - ./connection-docker.json:/app/connection-docker.json:ro
     networks:
-      - music-royalty-network
+      - music-royalty-app
       - music-royalty-fabric
     restart: unless-stopped
 
 networks:
-  music-royalty-network:
+  music-royalty-app:
     driver: bridge
   music-royalty-fabric:
     external: true

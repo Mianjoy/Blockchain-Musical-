@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
 import '../styles/SongDetailPage.css';
@@ -11,6 +11,7 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [distribucion, setDistribucion] = useState([]);
+  const purchasingRef = useRef(false);
 
   if (!song) {
     return (
@@ -21,29 +22,44 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
   }
 
   const handlePurchase = async () => {
+    if (purchasingRef.current || loading || purchaseSuccess) return;
+    purchasingRef.current = true;
     setLoading(true);
     setError('');
     try {
       const compra = await apiService.comprarCancion(
         song.id,
         `buyer_${Date.now()}`,
-        song.price || 1
+        song.price
       );
 
       setDistribucion(compra?.datos?.distribucion || []);
 
-      const claveResp = await apiService.obtenerClaveAcceso(song.id);
-      const key =
-        claveResp?.datos?.claveAcceso ||
-        claveResp?.claveAcceso ||
-        song.claveAcceso ||
-        '';
+      let key = compra?.datos?.claveAcceso || song.claveAcceso || '';
+
+      if (!key) {
+        try {
+          const claveResp = await apiService.obtenerClaveAcceso(song.id);
+          key =
+            claveResp?.datos?.claveAcceso ||
+            claveResp?.claveAcceso ||
+            '';
+        } catch (claveErr) {
+          console.warn('Compra OK; clave no disponible aún:', claveErr);
+        }
+      }
 
       setAccessKey(key);
       setPurchaseSuccess(true);
+      if (!key) {
+        setError(
+          'Compra registrada. Recarga el catálogo si no ves la clave de acceso.'
+        );
+      }
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.error || err.message || t('common.error'));
+      purchasingRef.current = false;
     } finally {
       setLoading(false);
     }
@@ -86,7 +102,7 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
           </div>
           <div className="info-item">
             <label>{t('song.detail.price')}</label>
-            <span>${song.price}</span>
+            <span>${Number(song.price || 0).toFixed(2)}</span>
           </div>
           <div className="info-item">
             <label>{t('song.detail.blockchain.id')}</label>
@@ -144,19 +160,21 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
                 </ul>
               </div>
             )}
-            <div className="access-key-container">
-              <label>{t('song.detail.purchase.access.key')}</label>
-              <div className="access-key-display">
-                <code>{accessKey}</code>
-                <button
-                  className="btn-copy"
-                  onClick={handleCopyKey}
-                  title={t('song.detail.purchase.copy.key')}
-                >
-                  {copied ? t('song.detail.purchase.copied') : '📋'}
-                </button>
+            {accessKey && (
+              <div className="access-key-container">
+                <label>{t('song.detail.purchase.access.key')}</label>
+                <div className="access-key-display">
+                  <code>{accessKey}</code>
+                  <button
+                    className="btn-copy"
+                    onClick={handleCopyKey}
+                    title={t('song.detail.purchase.copy.key')}
+                  >
+                    {copied ? t('song.detail.purchase.copied') : '📋'}
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
             <button
               className="btn-download"
               onClick={handleDownload}

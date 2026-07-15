@@ -1,0 +1,60 @@
+
+Carpeta: D:\Usuarios\Documentos\GitHub\Blockchain-Musical-
+Fecha: mié 15/07/2026 12:31:48,06
+Node: v24.18.0
+npm: OK
+Git Bash: C:\Program Files\Git\bin\bash.exe
+Docker CLI: Docker version 29.6.1, build 8900f1d
+Docker daemon: OK
+--- Prueba docker run hello-world ---
+Unable to find image 'hello-world:latest' locally
+latest: Pulling from library/hello-world
+4f55086f7dd0: Pulling fs layer
+d5e71e642bf5: Download complete
+4f55086f7dd0: Download complete
+4f55086f7dd0: Pull complete
+Digest: sha256:96498ffd522e70807ab6384a5c0485a79b9c7c08ca79ba08623edcad1054e62d
+Status: Downloaded newer image for hello-world:latest
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+    (amd64)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker ID:
+ https://hub.docker.com/
+
+For more examples and ideas, visit:
+ https://docs.docker.com/get-started/
+
+hello-world: OK
+--- Prueba montaje de volumen (causa tipica error 125) ---
+Unable to find image 'alpine:3.19' locally
+3.19: Pulling from library/alpine
+17a39c0ba978: Pulling fs layer
+fd18d7b2aa35: Download complete
+ef1614f30685: Download complete
+17a39c0ba978: Download complete
+17a39c0ba978: Pull complete
+Digest: sha256:6baf43584bcb78f2e5847d1de515f23499913ac9f12bdf834811a3145eb11ca1
+Status: Downloaded newer image for alpine:3.19
+ok
+Volumen network\: OK
+--- Imagenes Fabric ---
+hyperledger/fabric-tools:2.5.16
+hyperledger/fabric-peer:2.5.16
+hyperledger/fabric-orderer:2.5.16
+hyperledger/fabric-ca:1.5.21
+alpine:3.19
+node:18-alpine
+hyperledger/fabric-nodeenv:2.5

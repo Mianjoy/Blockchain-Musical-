@@ -1,6 +1,6 @@
 # Sistema de Regalías Musicales con Blockchain
 
-Plataforma descentralizada para gestionar **canciones, contratos de regalías y ventas** sobre **Hyperledger Fabric 2.5**, con arquitectura DDD/SOLID, API REST y frontend React (ES/EN).
+Plataforma descentralizada para gestionar **canciones, contratos de regalías y ventas** sobre **Hyperledger Fabric 3.1**, con arquitectura DDD/SOLID, API REST y frontend React (ES/EN).
 
 ---
 
@@ -19,31 +19,39 @@ Objetivo: **descargar el proyecto y arrancar todo** (dependencias + Fabric + API
 > También puedes clonar:  
 > `git clone https://github.com/Mianjoy/Blockchain-Musical-.git`
 
-### Paso 2 — Arrancar (único archivo)
+### Paso 2 — Arrancar (separado: Fabric ↔ App)
 
-Abre la carpeta del proyecto y haz **doble clic** en:
+Fabric va en **contenedores Docker**. La App (API + frontend) es **independiente** y se conecta si Fabric está arriba.
 
 ```text
-ARRANCAR.bat
+1) FABRIC-UP.bat     → solo blockchain (Docker)
+2) APP-UP.bat        → API + UI (se conecta a Fabric si está en :7051)
 ```
 
-También valen:
+Opciones rápidas:
 
 | Archivo | Qué hace |
 |---------|----------|
-| **`ARRANCAR.bat`** | **Recomendado** — instala lo que falte y arranca todo |
-| `run-system.bat` | Alias de `ARRANCAR.bat` |
-| `crear-acceso-directo.bat` | Crea un acceso directo en el Escritorio |
+| **`FABRIC-UP.bat`** | Solo Hyperledger Fabric 2.5.16 (contenedores) |
+| **`FABRIC-DOWN.bat`** | Solo apaga Fabric |
+| **`APP-UP.bat`** | Solo API+UI; conecta a Fabric o usa simulación |
+| **`ARRANCAR-DEMO.bat`** | Solo UI/API en simulación (sin Docker) |
+| **`ARRANCAR.bat`** | Menú: Demo / Fabric / Fabric+App |
+| **`CERRAR-TODO.bat`** | Apaga API, UI y Fabric |
 
-`ARRANCAR.bat` hace automáticamente:
+Compose separados:
 
-1. Revisa e instala **Node.js**, **Git Bash** y **Docker Desktop** (con `winget` si está disponible)
-2. Ejecuta `npm install` (backend, frontend y chaincode)
-3. Levanta la red **Hyperledger Fabric**
-4. Despliega el chaincode `music-royalty`
-5. Genera `connection.json` + wallet `appUser`
-6. Arranca la **API** y el **frontend**
-7. Abre el navegador en http://localhost:3001
+```text
+docker-compose.fabric.yml   # red music-royalty-fabric
+docker-compose.app.yml      # API unida a esa red
+```
+
+Comprobar conexión:
+
+```text
+http://localhost:3000/health
+→ fabric.connected: true | simulation: true
+```
 
 ### Paso 3 — Usar el sistema
 
@@ -121,9 +129,9 @@ Puedes crear un `.exe` “cara” con herramientas tipo *Bat to Exe* apuntando a
 
 | Herramienta | Uso |
 |-------------|-----|
-| **Docker Desktop** | Red Fabric |
+| **Docker Desktop** | Red Fabric 2.5.16 (obligatorio para Fabric real) |
 | **Node.js 18+** | API, frontend y wallet |
-| **Git Bash** o **WSL** | Scripts de la red Fabric |
+| Git Bash | Opcional (solo scripts `.sh` legacy / Mac-Linux) |
 
 ---
 
@@ -131,12 +139,14 @@ Puedes crear un `.exe` “cara” con herramientas tipo *Bat to Exe* apuntando a
 
 | Archivo | Uso |
 |---------|-----|
-| `ARRANCAR.bat` | **Todo en uno** (instalar + arrancar) |
-| `DETENER.bat` | Apagar API, frontend y Fabric |
+| `ARRANCAR.bat` | Fabric nativo + fallback DEMO |
+| `ARRANCAR-FABRIC.bat` | Solo Fabric real (Windows nativo) |
+| `ARRANCAR-DEMO.bat` | Solo simulación |
+| `REPARAR-FABRIC.bat` | Reset limpio de la red Fabric |
+| `CERRAR-TODO.bat` | **Cierra el sistema completo** (aunque no haya arrancado nada) |
+| `DETENER.bat` | Alias de `CERRAR-TODO.bat` |
+| `FIX-DOCKER-API.bat` | Ajuste Docker Desktop API antigua |
 | `install-dependencies.bat` | Solo deps (con preguntas) |
-| `install-dependencies-auto.bat` | Solo deps (sin preguntas; lo usa `ARRANCAR.bat`) |
-| `start-system.bat` | Solo arrancar si ya tienes deps |
-| `stop-system.bat` | Igual que `DETENER.bat` |
 | `crear-acceso-directo.bat` | Acceso directo en el Escritorio |
 
 Red Fabric: [network/README.md](network/README.md)
@@ -235,7 +245,7 @@ Blockchain-Musical-/
 │   └── services/                   # Analytics + notificaciones
 ├── api/
 ├── chaincode/music-royalty/
-├── network/                        # Fabric 2.5 test-network
+├── network/                        # Fabric 3.1 test-network
 ├── frontend/
 ├── scripts/enrollAppUser.js
 ├── start-system.bat / .sh
@@ -328,8 +338,50 @@ Crear canción (+ %) → Contrato en Fabric → Notificación de lanzamiento
 ### En Windows no arranca
 
 1. Ejecuta de nuevo **`ARRANCAR.bat`**
-2. O el asistente con preguntas: `install-dependencies.bat`
-3. Confirma Docker Desktop en verde
+2. Revisa **`arranque.log`** y **`fabric-network.log`**
+3. Confirma **Docker Desktop en verde**
+4. Si acabas de instalar Node/Git/Docker, reinicia y vuelve a ejecutar `ARRANCAR.bat`
+5. Asistente manual: `install-dependencies.bat`
+
+### Error Fabric código **125**
+
+Docker no pudo montar carpetas del proyecto (File sharing / rutas).
+
+El arranque Windows ya usa **`fabric-up.bat`** (CMD + Docker, sin Git Bash). Si aún falla:
+
+1. Docker Desktop → **Settings → Resources → File sharing**
+2. Marca la unidad del proyecto (`C:` o `D:`) → **Apply & Restart**
+3. Ejecuta **`REPARAR-FABRIC.bat`**
+4. Luego **`ARRANCAR-FABRIC.bat`**
+
+Detalle: `fabric-network.log`
+
+### Error: `timed out waiting for txid on all peers`
+
+El approve/commit ya trabaja **sin `waitForEvent`** y sondea `checkcommitreadiness` (más estable en Docker Desktop). Si aún falla:
+
+1. **`REPARAR-FABRIC.bat`** → **`ARRANCAR-FABRIC.bat`**
+2. O **`ARRANCAR-DEMO.bat`** (app usable en simulación)
+
+### Error: `creator org unknown, creator is malformed`
+
+La identidad Admin del CLI no encaja con el canal (MSP sin `config.yaml` NodeOUs, o canal/volumenes Docker de un intento anterior con otros certificados).
+
+1. Ejecuta **`REPARAR-FABRIC.bat`** (borra volúmenes + regenera crypto + `config.yaml`)
+2. Luego **`ARRANCAR-FABRIC.bat`**
+3. Revisa `fabric-network.log` si vuelve a fallar
+
+### Error: `client version 1.25 is too old` / `Minimum supported API version is 1.40`
+
+Al **instalar el chaincode**, el peer intenta hacer `docker build`. Docker Desktop reciente exige API ≥ 1.40, y el cliente Docker embebido en Fabric 2.5.x puede ser más antiguo.
+
+Solución:
+
+1. Ejecuta **`FIX-DOCKER-API.bat`** → en Docker Desktop **Apply & Restart** (añade `"min-api-version": "1.24"`)
+2. Ejecuta **`REPARAR-FABRIC.bat`** (limpia y regenera red)
+3. Ejecuta **`FABRIC-UP.bat`** o **`ARRANCAR.bat`**
+
+Nota: fabric-tools **3.x ya no se publica** en Docker Hub; por eso el proyecto usa **Fabric 2.5.16** (peer + orderer + tools disponibles).
 
 ### Red Fabric
 

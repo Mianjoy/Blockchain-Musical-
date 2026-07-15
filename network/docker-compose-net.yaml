@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
-version: '3.8'
 
 networks:
   fabric:
@@ -7,7 +6,7 @@ networks:
 
 services:
   ca_org1:
-    image: hyperledger/fabric-ca:${CA_IMAGE_TAG:-1.5.7}
+    image: hyperledger/fabric-ca:${CA_IMAGE_TAG:-1.5.21}
     container_name: ca_org1
     environment:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
@@ -24,7 +23,7 @@ services:
       - fabric
 
   orderer.example.com:
-    image: hyperledger/fabric-orderer:${IMAGE_TAG:-2.5.4}
+    image: hyperledger/fabric-orderer:${IMAGE_TAG:-2.5.16}
     container_name: orderer.example.com
     environment:
       - FABRIC_LOGGING_SPEC=INFO
@@ -61,9 +60,10 @@ services:
       - fabric
 
   peer0.org1.example.com:
-    image: hyperledger/fabric-peer:${IMAGE_TAG:-2.5.4}
+    image: hyperledger/fabric-peer:${IMAGE_TAG:-2.5.16}
     container_name: peer0.org1.example.com
     environment:
+      # Docker Desktop (Windows/WSL2): el peer arranca chaincode via este socket
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=music-royalty-fabric
       - FABRIC_LOGGING_SPEC=INFO
@@ -79,10 +79,14 @@ services:
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
       - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.org1.example.com:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.org1.example.com:7051
+      - CORE_PEER_GOSSIP_USELEADERELECTION=true
+      - CORE_PEER_GOSSIP_ORGLEADER=false
       - CORE_PEER_LOCALMSPID=Org1MSP
       - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
       - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9444
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+      - CORE_PEER_DELIVERYCLIENT_CONNTIMEOUT=30s
+      - CORE_PEER_DELIVERYCLIENT_RECONNECTTOTALTIMESTHRESHOLD=3600s
     volumes:
       - ./organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp
       - ./organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls
@@ -93,13 +97,15 @@ services:
     ports:
       - "7051:7051"
       - "9444:9444"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - fabric
     depends_on:
       - orderer.example.com
 
   cli:
-    image: hyperledger/fabric-tools:${IMAGE_TAG:-2.5.4}
+    image: hyperledger/fabric-tools:${IMAGE_TAG:-2.5.16}
     container_name: fabric-cli
     tty: true
     stdin_open: true

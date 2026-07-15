@@ -46,7 +46,7 @@ frontend/
 │   │   ├── SongDetailPage.jsx
 │   │   └── PurchasesPage.jsx
 │   ├── contexts/        # Contextos de React
-│   │   └── LanguageContext.js
+│   │   └── LanguageContext.jsx
 │   ├── hooks/           # Custom hooks
 │   ├── services/        # Servicios API
 │   │   └── api.js

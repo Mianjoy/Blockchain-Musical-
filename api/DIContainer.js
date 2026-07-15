@@ -43,7 +43,11 @@ class DIContainer {
 
     this._services.set(
       'registrarCompra',
-      new RegistrarCompraUseCase(this._contratoRepository, this._blockchainService)
+      new RegistrarCompraUseCase(
+        this._contratoRepository,
+        this._blockchainService,
+        this._cancionRepository
+      )
     );
 
     this._services.set(

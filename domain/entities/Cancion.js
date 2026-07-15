@@ -3,13 +3,14 @@
  * Representa una canción en el sistema de regalías
  */
 class Cancion {
-  constructor(id, titulo, artista, linkArchivo, participantes, fechaCreacion) {
+  constructor(id, titulo, artista, linkArchivo, participantes, fechaCreacion, precio = 0) {
     this._id = id;
     this._titulo = titulo;
     this._artista = artista;
     this._linkArchivo = linkArchivo;
     this._participantes = participantes; // Array de {rol, nombre, porcentaje}
     this._fechaCreacion = fechaCreacion;
+    this._precio = Number(precio);
     this._claveAcceso = null;
     this._activa = true;
   }
@@ -21,6 +22,7 @@ class Cancion {
   get linkArchivo() { return this._linkArchivo; }
   get participantes() { return [...this._participantes]; }
   get fechaCreacion() { return this._fechaCreacion; }
+  get precio() { return this._precio; }
   get claveAcceso() { return this._claveAcceso; }
   get activa() { return this._activa; }
 
@@ -37,8 +39,11 @@ class Cancion {
   }
 
   validarParticipantes() {
-    const totalPorcentaje = this._participantes.reduce((sum, p) => sum + p.porcentaje, 0);
-    if (totalPorcentaje !== 100) {
+    const totalPorcentaje = this._participantes.reduce(
+      (sum, p) => sum + Number(p.porcentaje),
+      0
+    );
+    if (Math.abs(totalPorcentaje - 100) > 0.01) {
       throw new Error(`La suma de porcentajes debe ser 100%, actual: ${totalPorcentaje}%`);
     }
     return true;
@@ -60,20 +65,29 @@ class Cancion {
       linkArchivo: this._linkArchivo,
       participantes: this._participantes,
       fechaCreacion: this._fechaCreacion,
+      precio: this._precio,
       claveAcceso: this._claveAcceso,
       activa: this._activa
     };
   }
 
   static fromPlainObject(obj) {
-    return new Cancion(
+    const cancion = new Cancion(
       obj.id,
       obj.titulo,
       obj.artista,
       obj.linkArchivo,
       obj.participantes,
-      obj.fechaCreacion
+      obj.fechaCreacion,
+      obj.precio ?? obj.price ?? 0
     );
+    if (obj.claveAcceso) {
+      cancion._claveAcceso = obj.claveAcceso;
+    }
+    if (obj.activa === false) {
+      cancion._activa = false;
+    }
+    return cancion;
   }
 }
 

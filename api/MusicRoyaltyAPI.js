@@ -93,12 +93,19 @@ class MusicRoyaltyAPI {
    */
   async crearCancion(req, res, next) {
     try {
-      const { titulo, artista, linkArchivo, participantes, usuarioId } = req.body;
+      const { titulo, artista, linkArchivo, participantes, usuarioId, precio, price } = req.body;
+      const precioFinal = Number(precio ?? price);
 
       if (!titulo || !artista || !linkArchivo || !participantes) {
         return res.status(400).json({
           error: 'Datos incompletos',
-          requeridos: ['titulo', 'artista', 'linkArchivo', 'participantes']
+          requeridos: ['titulo', 'artista', 'linkArchivo', 'participantes', 'precio']
+        });
+      }
+
+      if (!Number.isFinite(precioFinal) || precioFinal <= 0) {
+        return res.status(400).json({
+          error: 'El precio debe ser un número mayor que 0'
         });
       }
 
@@ -108,7 +115,8 @@ class MusicRoyaltyAPI {
         artista,
         linkArchivo,
         participantes,
-        usuarioId: usuarioId || 'usuario_anonimo'
+        usuarioId: usuarioId || 'usuario_anonimo',
+        precio: precioFinal
       });
 
       this.container.getNotificationStore().publicar({
@@ -118,7 +126,8 @@ class MusicRoyaltyAPI {
         payload: {
           cancionId: resultado.cancion?.id,
           titulo,
-          artista
+          artista,
+          precio: precioFinal
         }
       });
 
@@ -175,20 +184,20 @@ class MusicRoyaltyAPI {
    */
   async registrarCompra(req, res, next) {
     try {
-      const { cancionId, monto, compradorId } = req.body;
+      const { cancionId, compradorId } = req.body;
 
-      if (!cancionId || !monto || !compradorId) {
+      if (!cancionId || !compradorId) {
         return res.status(400).json({
           error: 'Datos incompletos',
-          requeridos: ['cancionId', 'monto', 'compradorId']
+          requeridos: ['cancionId', 'compradorId']
         });
       }
 
       const useCase = this.container.getUseCase('registrarCompra');
       const resultado = await useCase.execute({
         cancionId,
-        monto: parseFloat(monto),
-        compradorId
+        compradorId,
+        monto: req.body.monto
       });
 
       const cancion = await this.container.getCancionRepository().obtenerPorId(cancionId);
@@ -200,7 +209,7 @@ class MusicRoyaltyAPI {
           : `Se distribuyeron regalías por la compra de ${cancionId}`,
         payload: {
           cancionId,
-          monto: parseFloat(monto),
+          monto: resultado.monto,
           distribucion: resultado.distribucion
         }
       });

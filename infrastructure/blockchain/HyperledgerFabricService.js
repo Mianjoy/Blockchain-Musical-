@@ -14,13 +14,23 @@ const IBlockchainService = require('../../domain/interfaces/IBlockchainService')
 class HyperledgerFabricService extends IBlockchainService {
   constructor(config = {}) {
     super();
+    // infrastructure/blockchain → raíz del proyecto = ../../
+    const projectRoot = path.resolve(__dirname, '../..');
     this.config = {
-      walletPath: config.walletPath || path.join(__dirname, '../../../wallet'),
-      connectionProfile: config.connectionProfile || path.join(__dirname, '../../../connection.json'),
+      walletPath: config.walletPath || path.join(projectRoot, 'wallet'),
+      connectionProfile:
+        config.connectionProfile ||
+        process.env.CONNECTION_PROFILE ||
+        path.join(projectRoot, 'connection.json'),
       channelName: config.channelName || process.env.CHANNEL_NAME || 'mychannel',
       chaincodeName: config.chaincodeName || process.env.CHAINCODE_NAME || 'music-royalty',
       mspId: config.mspId || 'Org1MSP',
       identity: config.identity || 'appUser',
+      // true = API en host Windows (localhost). false = API en Docker (DNS peer/orderer)
+      asLocalhost:
+        config.asLocalhost !== undefined
+          ? config.asLocalhost
+          : process.env.FABRIC_AS_LOCALHOST !== 'false',
       allowSimulation:
         config.allowSimulation === true ||
         process.env.ALLOW_SIMULATION === 'true' ||
@@ -70,7 +80,10 @@ class HyperledgerFabricService extends IBlockchainService {
       await this.gateway.connect(ccp, {
         wallet,
         identity: this.config.identity,
-        discovery: { enabled: true, asLocalhost: true }
+        discovery: {
+          enabled: true,
+          asLocalhost: this.config.asLocalhost !== false
+        }
       });
 
       this.network = await this.gateway.getNetwork(this.config.channelName);
@@ -80,6 +93,8 @@ class HyperledgerFabricService extends IBlockchainService {
       console.log('Conexión a Hyperledger Fabric establecida correctamente');
       console.log(`  Canal: ${this.config.channelName}`);
       console.log(`  Chaincode: ${this.config.chaincodeName}`);
+      console.log(`  Perfil: ${connectionPath}`);
+      console.log(`  asLocalhost: ${this.config.asLocalhost !== false}`);
       return true;
     } catch (error) {
       console.error('Error inicializando Hyperledger Fabric:', error.message);
@@ -141,7 +156,8 @@ class HyperledgerFabricService extends IBlockchainService {
     const contratoData = JSON.stringify(contrato.toPlainObject());
 
     if (this._modoSimulacion) {
-      const plain = contrato.toPlainObject();
+      // Copia profunda superficial para no compartir arrays con la entidad en caché
+      const plain = JSON.parse(JSON.stringify(contrato.toPlainObject()));
       this._simStore.contratos.set(contrato.id, plain);
       this._simStore.contratosPorCancion.set(contrato.cancionId, contrato.id);
       console.log('[SIMULACIÓN] Registrando contrato:', contrato.id);
@@ -161,7 +177,7 @@ class HyperledgerFabricService extends IBlockchainService {
     const contratoData = JSON.stringify(contrato.toPlainObject());
 
     if (this._modoSimulacion) {
-      const plain = contrato.toPlainObject();
+      const plain = JSON.parse(JSON.stringify(contrato.toPlainObject()));
       this._simStore.contratos.set(contrato.id, plain);
       this._simStore.contratosPorCancion.set(contrato.cancionId, contrato.id);
       return true;
@@ -176,9 +192,36 @@ class HyperledgerFabricService extends IBlockchainService {
       throw new Error('El objeto debe ser una instancia de Transaccion');
     }
 
-    const transaccionData = JSON.stringify(transaccion.toPlainObject());
+    const plain = transaccion.toPlainObject();
+    const transaccionData = JSON.stringify(plain);
 
     if (this._modoSimulacion) {
+      if (!this._simStore.transacciones) {
+        this._simStore.transacciones = new Map();
+      }
+
+      // Idempotencia: misma TX no se vuelve a anexar
+      if (this._simStore.transacciones.has(transaccion.id)) {
+        console.log('[SIMULACIÓN] Transacción ya registrada:', transaccion.id);
+        return true;
+      }
+      this._simStore.transacciones.set(transaccion.id, plain);
+
+      const contrato = this._simStore.contratos.get(transaccion.contratoId);
+      if (contrato) {
+        if (!Array.isArray(contrato.transacciones)) {
+          contrato.transacciones = [];
+        }
+        const yaExiste = contrato.transacciones.some((t) => t && t.id === transaccion.id);
+        if (!yaExiste) {
+          contrato.transacciones.push(plain);
+        }
+        this._simStore.contratos.set(contrato.id, {
+          ...contrato,
+          transacciones: [...contrato.transacciones]
+        });
+      }
+
       console.log('[SIMULACIÓN] Registrando transacción:', transaccion.id);
       return true;
     }
@@ -251,6 +294,11 @@ class HyperledgerFabricService extends IBlockchainService {
     if (this._modoSimulacion) {
       this._simStore.claves.set(cancionId, clave.valor);
       this._claveCache.set(cancionId, clave);
+      const song = this._simStore.canciones.get(cancionId);
+      if (song) {
+        song.claveAcceso = clave.valor;
+        this._simStore.canciones.set(cancionId, song);
+      }
       return clave;
     }
 
