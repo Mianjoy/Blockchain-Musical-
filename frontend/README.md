@@ -18,5 +18,3 @@ Abre http://localhost:3001 (proxy `/api` → `localhost:3000`).
 - React 18, Vite, Axios, react-i18next (ES/EN)
 - Auth por sesión (`@nickname`) vía `AuthContext`
 - Páginas: login, catálogo, crear, detalle/compra, mis compras, analytics
-
-No uses la carpeta antigua `music-royalty-blockchain/` (eliminada); este es el frontend canónico.

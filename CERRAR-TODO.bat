@@ -88,10 +88,10 @@ for /f "tokens=*" %%i in ('docker ps -aq --filter "name=dev-peer" 2^>nul') do (
   docker rm -f %%i >nul 2>&1
 )
 
-:: compose de API+frontend de la raiz, si existe
-if exist "%ROOT%\docker-compose.yml" (
+:: compose de API en Docker, si existe
+if exist "%ROOT%\docker-compose.app.yml" (
   pushd "%ROOT%"
-  docker compose down --remove-orphans >nul 2>&1
+  docker compose -f docker-compose.app.yml down --remove-orphans >nul 2>&1
   popd
 )
 
@@ -103,9 +103,10 @@ echo ==============================================================
 echo  API / Frontend / Fabric detenidos ^(o ya estaban apagados^).
 echo.
 echo  Para volver a arrancar:
-echo    ARRANCAR.bat        ^(Fabric o DEMO^)
+echo    ARRANCAR.bat        ^(menu Demo / Fabric / App^)
 echo    ARRANCAR-DEMO.bat   ^(solo simulacion^)
-echo    ARRANCAR-FABRIC.bat ^(solo Fabric^)
+echo    FABRIC-UP.bat       ^(solo Fabric^)
+echo    APP-UP.bat          ^(API + UI^)
 echo.
 pause
 exit /b 0

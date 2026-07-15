@@ -142,7 +142,7 @@ printInfo "Package ID: ${FULL_PACKAGE_ID}"
 
 if ! approveWithRetry "${FULL_PACKAGE_ID}"; then
   printError "No se pudo aprobar el chaincode."
-  printError "Prueba REPARAR-FABRIC.bat o ARRANCAR-FABRIC.bat (ruta Windows nativa)."
+  printError "Prueba REPARAR-FABRIC.bat o FABRIC-UP.bat (ruta Windows nativa)."
   docker logs orderer.example.com 2>&1 | tail -n 30 || true
   docker logs peer0.org1.example.com 2>&1 | tail -n 30 || true
   exit 1

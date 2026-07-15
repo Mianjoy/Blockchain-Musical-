@@ -228,7 +228,7 @@ cd frontend && npm install
 | `APP-UP.bat` | API + frontend |
 | `ARRANCAR-DEMO.bat` | Solo simulación (sin Docker) |
 | `ARRANCAR.bat` | Menú Demo / Fabric / Fabric+App |
-| `CERRAR-TODO.bat` / `DETENER.bat` | Cierra API, UI y Fabric |
+| `CERRAR-TODO.bat` | Cierra API, UI y Fabric |
 | `REPARAR-FABRIC.bat` | Limpia y regenera la red |
 | `FIX-DOCKER-API.bat` | Mitiga error API Docker 1.25 al instalar chaincode |
 | `DIAGNOSTICO.bat` | Prueba Docker y montaje de volúmenes |
@@ -252,9 +252,9 @@ http://localhost:3000/health
 ### 5.5 Compose
 
 ```text
-docker-compose.fabric.yml   # peer, orderer, CA, CLI (red music-royalty-fabric)
-network/docker-compose-net.yaml   # compose legacy usado por fabric-up.bat
-docker-compose.app.yml      # API opcional en la misma red Docker
+docker-compose.fabric.yml         # peer, orderer, CA, CLI (red music-royalty-fabric)
+network/docker-compose-net.yaml   # compose usado por fabric-up.bat
+docker-compose.app.yml            # API opcional en la misma red Docker
 ```
 
 ---
@@ -358,7 +358,6 @@ No versionar: `connection.json`, `wallet/*`, crypto MSP, `data/users.json`, `*.l
 REPARAR-FABRIC.bat
 FIX-DOCKER-API.bat
 DIAGNOSTICO.bat
-crear-acceso-directo.bat
 ```
 
 Manual Fabric (CMD):
@@ -392,6 +391,8 @@ node scripts\enrollAppUser.js
 ```bash
 chmod +x start-system.sh stop-system.sh network/scripts/*.sh
 ./start-system.sh
+# detener:
+./stop-system.sh
 # o solo red:
 bash network/scripts/network.sh up
 ```

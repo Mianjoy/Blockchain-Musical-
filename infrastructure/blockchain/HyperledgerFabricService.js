@@ -63,7 +63,7 @@ class HyperledgerFabricService extends IBlockchainService {
     const connectionPath = this.config.connectionProfile;
     if (!fs.existsSync(connectionPath)) {
       return this._activarSimulacionOFallar(
-        `No existe connection.json en ${connectionPath}. Ejecuta start-system.bat o network/scripts/network.sh up`
+        `No existe connection.json en ${connectionPath}. Ejecuta FABRIC-UP.bat o network/scripts/network.sh up`
       );
     }
 
