@@ -32,7 +32,7 @@ Opciones rápidas:
 
 | Archivo | Qué hace |
 |---------|----------|
-| **`FABRIC-UP.bat`** | Solo Hyperledger Fabric 3.1.5 (contenedores) |
+| **`FABRIC-UP.bat`** | Solo Hyperledger Fabric 2.5.16 (contenedores) |
 | **`FABRIC-DOWN.bat`** | Solo apaga Fabric |
 | **`APP-UP.bat`** | Solo API+UI; conecta a Fabric o usa simulación |
 | **`ARRANCAR-DEMO.bat`** | Solo UI/API en simulación (sin Docker) |
@@ -129,7 +129,7 @@ Puedes crear un `.exe` “cara” con herramientas tipo *Bat to Exe* apuntando a
 
 | Herramienta | Uso |
 |-------------|-----|
-| **Docker Desktop** | Red Fabric 3.1.5 (obligatorio para Fabric real) |
+| **Docker Desktop** | Red Fabric 2.5.16 (obligatorio para Fabric real) |
 | **Node.js 18+** | API, frontend y wallet |
 | Git Bash | Opcional (solo scripts `.sh` legacy / Mac-Linux) |
 
@@ -373,13 +373,15 @@ La identidad Admin del CLI no encaja con el canal (MSP sin `config.yaml` NodeOUs
 
 ### Error: `client version 1.25 is too old` / `Minimum supported API version is 1.40`
 
-Al **instalar el chaincode**, el peer intenta hacer `docker build`. Docker Desktop reciente exige API ≥ 1.40, y Fabric **2.5.4** usaba cliente 1.25.
+Al **instalar el chaincode**, el peer intenta hacer `docker build`. Docker Desktop reciente exige API ≥ 1.40, y el cliente Docker embebido en Fabric 2.5.x puede ser más antiguo.
 
-El proyecto ya usa **Fabric 3.1.5** (última estable, cliente Docker moderno). Para aplicar el cambio:
+Solución:
 
-1. (Opcional pero recomendado) Ejecuta **`FIX-DOCKER-API.bat`** → en Docker Desktop **Apply & Restart**
-2. Ejecuta **`REPARAR-FABRIC.bat`** (obliga a bajar imágenes nuevas y regenerar red)
-3. Ejecuta **`ARRANCAR.bat`**
+1. Ejecuta **`FIX-DOCKER-API.bat`** → en Docker Desktop **Apply & Restart** (añade `"min-api-version": "1.24"`)
+2. Ejecuta **`REPARAR-FABRIC.bat`** (limpia y regenera red)
+3. Ejecuta **`FABRIC-UP.bat`** o **`ARRANCAR.bat`**
+
+Nota: fabric-tools **3.x ya no se publica** en Docker Hub; por eso el proyecto usa **Fabric 2.5.16** (peer + orderer + tools disponibles).
 
 ### Red Fabric
 

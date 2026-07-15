@@ -1,6 +1,8 @@
 # Red Hyperledger Fabric – Music Royalty
 
-Red de prueba **Fabric 3.1.5** + **CA 1.5.21**: Org1 (peer + CA), orderer, canal `mychannel` y chaincode `music-royalty`.
+Red de prueba **Fabric 2.5.16** + **CA 1.5.21**: Org1 (peer + CA), orderer, canal `mychannel` y chaincode `music-royalty`.
+
+> `fabric-tools:3.x` ya no existe en Docker Hub (imagen deprecada por Hyperledger). Se usa la línea 2.5 LTS.
 
 ## Requisitos
 

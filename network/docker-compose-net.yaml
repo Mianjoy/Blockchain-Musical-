@@ -1,5 +1,4 @@
 # SPDX-License-Identifier: Apache-2.0
-version: '3.8'
 
 networks:
   fabric:
@@ -24,7 +23,7 @@ services:
       - fabric
 
   orderer.example.com:
-    image: hyperledger/fabric-orderer:${IMAGE_TAG:-3.1.5}
+    image: hyperledger/fabric-orderer:${IMAGE_TAG:-2.5.16}
     container_name: orderer.example.com
     environment:
       - FABRIC_LOGGING_SPEC=INFO
@@ -61,7 +60,7 @@ services:
       - fabric
 
   peer0.org1.example.com:
-    image: hyperledger/fabric-peer:${IMAGE_TAG:-3.1.5}
+    image: hyperledger/fabric-peer:${IMAGE_TAG:-2.5.16}
     container_name: peer0.org1.example.com
     environment:
       # Docker Desktop (Windows/WSL2): el peer arranca chaincode via este socket
@@ -106,7 +105,7 @@ services:
       - orderer.example.com
 
   cli:
-    image: hyperledger/fabric-tools:${IMAGE_TAG:-3.1.5}
+    image: hyperledger/fabric-tools:${IMAGE_TAG:-2.5.16}
     container_name: fabric-cli
     tty: true
     stdin_open: true

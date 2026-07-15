@@ -12,7 +12,7 @@ echo.
 echo  Limpia red + artefactos y vuelve a generarlos con fabric-up.bat
 echo  ^(CMD + Docker, sin Git Bash^).
 echo.
-echo  Fabric 3.1.5 / CA 1.5.21
+echo  Fabric 2.5.16 / CA 1.5.21
 echo  Si el error fue "client version 1.25 is too old":
 echo     1^) FIX-DOCKER-API.bat
 echo     2^) Apply ^& Restart en Docker Desktop
@@ -45,13 +45,25 @@ if errorlevel 1 (
 )
 
 echo.
-echo [0/3] Descargando imagenes Fabric 3.1.5 / CA 1.5.21...
-docker pull hyperledger/fabric-peer:3.1.5
-docker pull hyperledger/fabric-orderer:3.1.5
-docker pull hyperledger/fabric-tools:3.1.5
+echo [0/3] Descargando imagenes Fabric 2.5.16 / CA 1.5.21...
+docker pull hyperledger/fabric-peer:2.5.16
+if errorlevel 1 goto pull_fail
+docker pull hyperledger/fabric-orderer:2.5.16
+if errorlevel 1 goto pull_fail
+docker pull hyperledger/fabric-tools:2.5.16
+if errorlevel 1 goto pull_fail
 docker pull hyperledger/fabric-ca:1.5.21
+if errorlevel 1 goto pull_fail
 docker pull node:18-alpine
+if errorlevel 1 goto pull_fail
+goto pull_ok
 
+:pull_fail
+echo [ERROR] Fallo al descargar imagenes. Revisa internet / Docker Hub.
+pause
+exit /b 1
+
+:pull_ok
 echo [1/3] Limpiando red, volumenes Docker y certificados viejos...
 call "%~dp0scripts\windows\fabric-up.bat" clean
 if errorlevel 1 (
@@ -60,42 +72,18 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo.
-echo [2/3] Regenerando crypto + config.yaml NodeOUs...
-call "%~dp0scripts\windows\generate-crypto-native.bat"
-if errorlevel 1 (
-  echo [ERROR] Crypto fallo. Activa File sharing de la unidad en Docker Desktop.
-  pause
-  exit /b 1
-)
-
-echo.
-echo [3/3] Levantando red Fabric limpia...
+echo [2/3] Regenerando crypto + canal + chaincode...
 call "%~dp0scripts\windows\fabric-up.bat" up
 if errorlevel 1 (
-  echo.
-  echo [ERROR] Sigue fallando. Revisa fabric-network.log
-  echo.
-  echo En Docker Desktop:
-  echo  - Settings ^> Resources ^> File sharing
-  echo  - Marca la unidad del proyecto ^(C: o D:^)
-  echo  - Apply ^& Restart
-  echo.
-  echo Si el error era "creator malformed", la limpieza de arriba
-  echo borra canal/volumenes viejos incompatibles con certificados nuevos.
-  echo.
-  echo Si el error era "client version too old":
-  echo  - Ejecuta FIX-DOCKER-API.bat y Apply ^& Restart
-  echo.
-  echo Mientras tanto: ARRANCAR-DEMO.bat
-  echo.
+  echo [ERROR] Fabric no completo. Revisa fabric-network.log
+  echo         Si es Docker API 1.25: ejecuta FIX-DOCKER-API.bat
   pause
   exit /b 1
 )
 
 echo.
-echo [OK] Red Fabric 3.1.5 reparada desde cero.
-echo      Ahora: ARRANCAR-FABRIC.bat
+echo [OK] Red Fabric 2.5.16 reparada desde cero.
+echo      Siguiente: APP-UP.bat o ARRANCAR.bat
 echo.
 pause
-endlocal
+exit /b 0

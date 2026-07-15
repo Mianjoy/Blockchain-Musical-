@@ -1,6 +1,7 @@
 @echo off
 :: =============================================================================
-:: fabric-up.bat — Hyperledger Fabric 3.1.5 en Windows nativo (CMD + Docker)
+:: fabric-up.bat — Hyperledger Fabric 2.5.16 en Windows nativo (CMD + Docker)
+:: Nota: fabric-tools:3.x ya NO se publica en Docker Hub (deprecado).
 :: Uso: fabric-up.bat [up|down|clean]
 :: =============================================================================
 setlocal EnableDelayedExpansion
@@ -10,7 +11,7 @@ set "ROOT=%CD%"
 set "NET=%ROOT%\network"
 set "CC=%ROOT%\chaincode\music-royalty"
 set "LOG=%ROOT%\fabric-network.log"
-set "FABRIC_VER=3.1.5"
+set "FABRIC_VER=2.5.16"
 set "CA_VER=1.5.21"
 set "CHANNEL=mychannel"
 set "CC_NAME=music-royalty"
@@ -195,25 +196,34 @@ if errorlevel 1 (
 ) else (
   call :log "[5/7] Canal %CHANNEL% ya existe; verificando lectura..."
   docker exec fabric-cli peer channel getinfo -c %CHANNEL% >"%TEMP%\mr-chinfo.txt" 2>&1
-  findstr /i /c:"height:" "%TEMP%\mr-chinfo.txt" >nul
+  type "%TEMP%\mr-chinfo.txt" >>"%LOG%"
+  call :channel_has_height
   if errorlevel 1 (
-    findstr /i /c:"malformed" /c:"access denied" /c:"creator org" "%TEMP%\mr-chinfo.txt" >nul
-    if not errorlevel 1 (
-      if "!RECOVERY_DONE!"=="0" (
-        call :log "[AVISO] Canal existe pero Admin no es valido. Reset completo..."
-        type "%TEMP%\mr-chinfo.txt" >>"%LOG%"
-        set "RECOVERY_DONE=1"
-        call :do_clean
-        goto do_up
-      )
+    call :log "[AVISO] Canal presente pero ledger ilegible (sin height)."
+    if "!RECOVERY_DONE!"=="0" (
+      call :log "[AVISO] Reset completo: volumenes/canal de un intento anterior..."
+      set "RECOVERY_DONE=1"
+      call :do_clean
+      goto do_up
     )
-    call :log "[AVISO] No se pudo leer height; se continua"
-  ) else (
-    call :log "[OK] Canal legible"
+    call :err "Canal ilegible tras reset. Revisa fabric-network.log y ejecuta REPARAR-FABRIC.bat"
+    type "%TEMP%\mr-chinfo.txt"
+    exit /b 1
   )
+  call :log "[OK] Canal legible"
 )
 
 call :wait_channel_height
+if errorlevel 1 (
+  if "!RECOVERY_DONE!"=="0" (
+    call :log "[AVISO] Canal sin height estable. Reset completo..."
+    set "RECOVERY_DONE=1"
+    call :do_clean
+    goto do_up
+  )
+  call :err "Canal no entrega bloques tras reset"
+  exit /b 1
+)
 timeout /t 5 /nobreak >nul
 
 docker exec fabric-cli peer lifecycle chaincode querycommitted --channelID %CHANNEL% --name %CC_NAME% >nul 2>&1
@@ -301,17 +311,35 @@ set /a _h=0
 :wh_loop
 set /a _h+=1
 docker exec fabric-cli peer channel getinfo -c %CHANNEL% >"%TEMP%\mr-chinfo.txt" 2>&1
-findstr /i "height:" "%TEMP%\mr-chinfo.txt" >nul
+call :channel_has_height
 if not errorlevel 1 (
   call :log "[OK] Canal entregando bloques"
   exit /b 0
 )
-if !_h! GEQ 30 (
-  call :log "[AVISO] No se pudo leer height; se continua"
-  exit /b 0
+if !_h! GEQ 20 (
+  call :log "[ERROR] Timeout leyendo height del canal"
+  type "%TEMP%\mr-chinfo.txt" >>"%LOG%"
+  type "%TEMP%\mr-chinfo.txt"
+  exit /b 1
 )
-timeout /t 2 /nobreak >nul
+if !_h!==1 (
+  call :log "  Esperando height del canal..."
+  type "%TEMP%\mr-chinfo.txt" >>"%LOG%"
+)
+timeout /t 3 /nobreak >nul
 goto wh_loop
+
+:channel_has_height
+:: Fabric 2.5+ usa JSON: {"height":1,...}  →  la clave es "height" (comillas antes de :)
+:: No buscar "height:" porque falla: height":1
+findstr /i /c:"Blockchain info" "%TEMP%\mr-chinfo.txt" >nul
+if not errorlevel 1 exit /b 0
+findstr /i /c:"\"height\"" "%TEMP%\mr-chinfo.txt" >nul
+if not errorlevel 1 exit /b 0
+:: Formato antiguo texto plano height: N
+findstr /i /r /c:"height[ ]*:" "%TEMP%\mr-chinfo.txt" >nul
+if not errorlevel 1 exit /b 0
+exit /b 1
 
 :deploy_cc
 set "ORDERER_CA=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"

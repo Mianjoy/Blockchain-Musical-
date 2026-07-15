@@ -67,7 +67,7 @@ if errorlevel 1 (
 
 if exist "%NET%\docker-compose-net.yaml" (
   pushd "%NET%"
-  set "IMAGE_TAG=3.1.5"
+  set "IMAGE_TAG=2.5.16"
   set "CA_IMAGE_TAG=1.5.21"
   set "COMPOSE_PROJECT_NAME=musicroyalty"
   docker compose -f docker-compose-net.yaml down --volumes --remove-orphans >nul 2>&1

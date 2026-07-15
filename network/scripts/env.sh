@@ -12,9 +12,10 @@ export CC_VERSION="${CC_VERSION:-1.0}"
 export CC_SEQUENCE="${CC_SEQUENCE:-1}"
 export CC_SRC_PATH="${PROJECT_DIR}/chaincode/music-royalty"
 export CC_RUNTIME_LANGUAGE=node
-# Fabric 3.1.5 = última estable (cliente Docker moderno, Ubuntu 24.04).
-# CA 1.5.21 = última Fabric CA compatible.
-export FABRIC_VERSION="${FABRIC_VERSION:-3.1.5}"
+# Fabric 2.5.16 = LTS con peer/orderer/tools en Docker Hub.
+# fabric-tools:3.x ya no se publica (deprecado por Hyperledger).
+# CA 1.5.21 = Fabric CA compatible.
+export FABRIC_VERSION="${FABRIC_VERSION:-2.5.16}"
 export CA_VERSION="${CA_VERSION:-1.5.21}"
 
 export ORDERER_CA="${ROOT_DIR}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem"

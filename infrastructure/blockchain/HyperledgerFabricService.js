@@ -14,12 +14,14 @@ const IBlockchainService = require('../../domain/interfaces/IBlockchainService')
 class HyperledgerFabricService extends IBlockchainService {
   constructor(config = {}) {
     super();
+    // infrastructure/blockchain → raíz del proyecto = ../../
+    const projectRoot = path.resolve(__dirname, '../..');
     this.config = {
-      walletPath: config.walletPath || path.join(__dirname, '../../../wallet'),
+      walletPath: config.walletPath || path.join(projectRoot, 'wallet'),
       connectionProfile:
         config.connectionProfile ||
         process.env.CONNECTION_PROFILE ||
-        path.join(__dirname, '../../../connection.json'),
+        path.join(projectRoot, 'connection.json'),
       channelName: config.channelName || process.env.CHANNEL_NAME || 'mychannel',
       chaincodeName: config.chaincodeName || process.env.CHAINCODE_NAME || 'music-royalty',
       mspId: config.mspId || 'Org1MSP',

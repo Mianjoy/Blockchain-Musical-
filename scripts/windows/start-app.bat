@@ -50,7 +50,7 @@ if /i "%MODE%"=="simulation" (
 )
 
 echo [INFO] Iniciando API...
-start "MusicRoyalty-API" /D "%ROOT%" cmd /k "set ALLOW_SIMULATION=%ALLOW_SIMULATION%&& set FABRIC_AS_LOCALHOST=%FABRIC_AS_LOCALHOST%&& set CHANNEL_NAME=mychannel&& set CHAINCODE_NAME=music-royalty&& set PORT=3000&& set HOST=0.0.0.0&& node index.js"
+start "MusicRoyalty-API" /D "%ROOT%" cmd /k "set ALLOW_SIMULATION=%ALLOW_SIMULATION%&& set FABRIC_AS_LOCALHOST=%FABRIC_AS_LOCALHOST%&& set CONNECTION_PROFILE=%ROOT%\connection.json&& set CHANNEL_NAME=mychannel&& set CHAINCODE_NAME=music-royalty&& set PORT=3000&& set HOST=0.0.0.0&& node index.js"
 
 timeout /t 5 /nobreak >nul
 

@@ -8,11 +8,14 @@ echo ============================================================
 echo  FIX Docker API ^(Fabric chaincode / error client 1.25^)
 echo ============================================================
 echo.
-echo Docker Desktop moderno rechaza clientes Docker antiguos.
-echo Fabric 2.5.4 usaba API 1.25; el proyecto ahora usa Fabric 3.1.5.
+echo Docker Desktop moderno puede rechazar el cliente Docker
+echo antiguo del peer Fabric 2.5 al construir chaincode.
 echo.
-echo Ademas, este script configura Docker Engine para aceptar
-echo APIs antiguas ^(min-api-version 1.24^) por si hace falta.
+echo Este script configura Docker Engine con:
+echo   "min-api-version": "1.24"
+echo.
+echo El proyecto usa Fabric 2.5.16 ^(fabric-tools:3.x ya no existe
+echo en Docker Hub^).
 echo.
 
 set "DAEMON=%USERPROFILE%\.docker\daemon.json"
@@ -45,9 +48,8 @@ echo.
 echo SIGUIENTE:
 echo  1. Abre Docker Desktop
 echo  2. Settings ^> Docker Engine ^> Apply ^& Restart
-echo     ^(si no reinicia solo, haz Apply ^& Restart^)
 echo  3. Ejecuta REPARAR-FABRIC.bat
-echo  4. Ejecuta ARRANCAR.bat
+echo  4. Luego FABRIC-UP.bat o ARRANCAR.bat
 echo.
 pause
 endlocal

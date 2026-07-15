@@ -17,7 +17,8 @@ function waitChannelReady() {
   printInfo "Esperando que el canal ${CHANNEL_NAME} entregue bloques..."
   local i height
   for i in $(seq 1 40); do
-    height="$(docker exec fabric-cli peer channel getinfo -c "${CHANNEL_NAME}" 2>/dev/null | sed -n 's/.*height: *\([0-9]*\).*/\1/p' | head -n1 || true)"
+    # Fabric 2.5+ JSON: "height":1  — no es height:1 en texto plano
+    height="$(docker exec fabric-cli peer channel getinfo -c "${CHANNEL_NAME}" 2>/dev/null | sed -n 's/.*"height"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p; s/.*height: *\([0-9][0-9]*\).*/\1/p' | head -n1 || true)"
     if [[ -n "${height}" && "${height}" -ge 1 ]]; then
       printSuccess "Canal listo (height=${height})"
       return 0

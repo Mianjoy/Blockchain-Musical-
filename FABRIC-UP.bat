@@ -10,7 +10,7 @@ set "ROOT=%CD%"
 
 echo.
 echo ==============================================================
-echo  FABRIC UP — Stack blockchain separado ^(Fabric 3.1.5^)
+echo  FABRIC UP — Stack blockchain separado ^(Fabric 2.5.16^)
 echo ==============================================================
 echo  Contenedores: CA / Orderer / Peer / CLI
 echo  Red Docker:   music-royalty-fabric
@@ -95,7 +95,14 @@ call "%ROOT%\scripts\windows\fabric-up.bat" up
 if errorlevel 1 (
   echo.
   echo [ERROR] Fabric no completo. Revisa fabric-network.log
-  echo         Si el error es de volumenes/compose, prueba REPARAR-FABRIC.bat
+  echo.
+  echo Si viste "No se pudo leer height" o canal a medias:
+  echo   1^) Ejecuta REPARAR-FABRIC.bat  ^(limpia volumenes viejos^)
+  echo   2^) Vuelve a ejecutar FABRIC-UP.bat
+  echo.
+  echo Si el error es Docker API 1.25:
+  echo   FIX-DOCKER-API.bat  →  Apply ^& Restart en Docker Desktop
+  echo.
   pause
   exit /b 1
 )
