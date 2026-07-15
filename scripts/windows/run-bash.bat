@@ -1,5 +1,6 @@
 @echo off
-:: Ejecuta network/scripts/*.sh y guarda TODA la salida en fabric-network.log
+:: Ejecuta network/scripts/*.sh y guarda la salida en fabric-network.log
+:: (el .sh NO debe abrir ese mismo archivo o Windows da "Device or resource busy")
 setlocal EnableDelayedExpansion
 
 if not defined MR_BASH call "%~dp0find-bash.bat"
@@ -17,6 +18,7 @@ set "SH_REL=%~1"
 set "SH_ARG=%~2"
 set "WIN_ROOT=%CD%"
 set "LOG_FILE=%WIN_ROOT%\fabric-network.log"
+set "TMP_OUT=%TEMP%\fabric-run-%RANDOM%.log"
 
 set "DRIVE=!WIN_ROOT:~0,1!"
 set "REST=!WIN_ROOT:~2!"
@@ -34,29 +36,33 @@ echo Proyecto: !WIN_ROOT!>> "!LOG_FILE!"
 echo Comando: bash ./!SH_REL! !SH_ARG!>> "!LOG_FILE!"
 echo.>> "!LOG_FILE!"
 
-:: Ejecutar y volcar a log + consola
-"%MR_BASH%" -lc "export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' COMPOSE_CONVERT_WINDOWS_PATHS=1; set -e; cd '!BASH_ROOT!'; for f in ./network/scripts/*.sh; do sed -i 's/\r$//' \"$f\" 2>/dev/null || true; done; chmod +x ./network/scripts/*.sh 2>/dev/null || true; bash ./!SH_REL! !SH_ARG!" 1>>"!LOG_FILE!" 2>&1
+:: 1) Ejecutar a archivo temporal (evita conflicto de bloqueo)
+:: 2) Copiar al log final y mostrar en pantalla
+"%MR_BASH%" -lc "export MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL='*' COMPOSE_CONVERT_WINDOWS_PATHS=1; set -e; cd '!BASH_ROOT!'; for f in ./network/scripts/*.sh; do sed -i 's/\r$//' \"$f\" 2>/dev/null || true; done; chmod +x ./network/scripts/*.sh 2>/dev/null || true; bash ./!SH_REL! !SH_ARG!" >"!TMP_OUT!" 2>&1
 set "RC=!ERRORLEVEL!"
 
-:: Mostrar finales del log en consola
+:: Volcar a log y consola
+type "!TMP_OUT!" >> "!LOG_FILE!"
 echo.
-echo ---------- Ultimas lineas de fabric-network.log ----------
-powershell -NoProfile -Command "if (Test-Path -LiteralPath '%LOG_FILE%') { Get-Content -LiteralPath '%LOG_FILE%' -Tail 40 } else { 'Log no encontrado' }"
-echo ----------------------------------------------------------
+echo ---------- Salida del arranque Fabric ----------
+type "!TMP_OUT!"
+echo ------------------------------------------------
 echo.
+
+del /q "!TMP_OUT!" >nul 2>nul
 
 if not "!RC!"=="0" (
   echo [ERROR] Fallo Fabric/script. Codigo: !RC!
   echo.
   if "!RC!"=="125" (
     echo  Codigo 125 = Docker no pudo crear un contenedor.
-    echo  1^) Docker Desktop debe estar en VERDE
-    echo  2^) Settings ^> Resources ^> File sharing ^> marca unidad D: o C:
+    echo  1^) Docker Desktop en VERDE
+    echo  2^) Settings ^> Resources ^> File sharing ^> marca unidad del proyecto
     echo  3^) Apply ^& Restart
-    echo  4^) Ejecuta REPARAR-FABRIC.bat
+    echo  4^) REPARAR-FABRIC.bat y luego ARRANCAR.bat
     echo.
   )
-  echo  Abre el archivo completo: fabric-network.log
+  echo  Log completo: fabric-network.log
   echo.
 )
 

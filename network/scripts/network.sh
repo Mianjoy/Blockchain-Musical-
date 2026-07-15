@@ -6,10 +6,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/env.sh"
 
 MODE="${1:-up}"
-LOG_FILE="${PROJECT_DIR}/fabric-network.log"
+
+# Importante en Windows: NO escribir fabric-network.log desde este script.
+# run-bash.bat ya redirige stdout/stderr a ese archivo; abrirlo aqui provoca
+# "Device or resource busy" y corta el arranque.
 
 function log() {
-  echo "$(date '+%Y-%m-%d %H:%M:%S') $*" | tee -a "${LOG_FILE}"
+  echo "$(date '+%Y-%m-%d %H:%M:%S') $*"
 }
 
 function networkDown() {
@@ -39,8 +42,8 @@ function networkClean() {
          "${ROOT_DIR}/system-genesis-block" \
          "${ROOT_DIR}/organizations/fabric-ca/org1" \
          "${PROJECT_DIR}/wallet"/* \
-         "${PROJECT_DIR}/connection.json" \
-         "${LOG_FILE}"
+         "${PROJECT_DIR}/connection.json"
+  # No borrar fabric-network.log aqui si el wrapper lo tiene abierto
   mkdir -p "${PROJECT_DIR}/wallet"
   printSuccess "Limpieza completa"
 }
@@ -73,7 +76,6 @@ function waitForPeer() {
       printSuccess "Peer listo"
       return 0
     fi
-    # Si el contenedor salio, mostrar logs
     local st
     st="$(docker inspect -f '{{.State.Status}}' peer0.org1.example.com 2>/dev/null || echo missing)"
     if [[ "${st}" == "exited" || "${st}" == "missing" ]]; then
@@ -94,8 +96,8 @@ function composeUp() {
   cd "${ROOT_DIR}"
   set +e
   MSYS_NO_PATHCONV=1 IMAGE_TAG="${FABRIC_VERSION}" CA_IMAGE_TAG="${CA_VERSION}" \
-    docker compose -f docker-compose-net.yaml up -d 2>&1 | tee -a "${LOG_FILE}"
-  local rc=${PIPESTATUS[0]}
+    docker compose -f docker-compose-net.yaml up -d
+  local rc=$?
   set -e
   if [[ "${rc}" -ne 0 ]]; then
     printError "docker compose up fallo con codigo ${rc}"
@@ -103,7 +105,7 @@ function composeUp() {
       printError "Codigo 125: suele ser fallo de Docker al crear contenedores (volumenes/rutas en Windows)."
       printError "1) Docker Desktop en verde"
       printError "2) Settings > Resources > File sharing: incluye la unidad del proyecto"
-      printError "3) Ejecuta: bash network/scripts/network.sh clean && ARRANCAR.bat"
+      printError "3) Ejecuta REPARAR-FABRIC.bat y luego ARRANCAR.bat"
     fi
     docker compose -f docker-compose-net.yaml ps -a || true
     return "${rc}"
@@ -112,7 +114,6 @@ function composeUp() {
 }
 
 function networkUp() {
-  : > "${LOG_FILE}"
   log "=== network.sh up ==="
   log "ROOT_DIR=${ROOT_DIR}"
   log "PROJECT_DIR=${PROJECT_DIR}"
@@ -124,14 +125,12 @@ function networkUp() {
     bash "${SCRIPT_DIR}/generateCrypto.sh"
   else
     printInfo "Artefactos existentes detectados"
-    # Validar MSP del orderer exista
     if [[ ! -d "${ROOT_DIR}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp" ]]; then
       printWarn "MSP incompleto; regenerando crypto..."
       bash "${SCRIPT_DIR}/generateCrypto.sh"
     fi
   fi
 
-  # Asegurar carpetas que el CA escribe
   mkdir -p "${ROOT_DIR}/organizations/fabric-ca/org1"
 
   composeUp
@@ -153,13 +152,30 @@ function networkUp() {
 
   printInfo "Generando connection.json y wallet appUser..."
   if ! command -v node >/dev/null 2>&1; then
+    # En Git Bash a veces node no esta en PATH; intentar rutas tipicas de Windows
+    for candidate in \
+      "/c/Program Files/nodejs/node.exe" \
+      "/d/Program Files/nodejs/node.exe" \
+      "$HOME/AppData/Local/Programs/node/node.exe"; do
+      if [[ -x "${candidate}" ]]; then
+        printInfo "Usando node en: ${candidate}"
+        "${candidate}" "${PROJECT_DIR}/scripts/enrollAppUser.js"
+        printSuccess "Red Fabric operativa"
+        _print_endpoints
+        return 0
+      fi
+    done
     printError "node no esta en PATH dentro de Git Bash"
-    printError "Reinstala Node.js o ejecuta enroll desde cmd: node scripts/enrollAppUser.js"
+    printError "Reinstala Node.js o ejecuta: node scripts/enrollAppUser.js"
     return 1
   fi
   node "${PROJECT_DIR}/scripts/enrollAppUser.js"
 
   printSuccess "Red Fabric operativa"
+  _print_endpoints
+}
+
+function _print_endpoints() {
   echo ""
   echo "  Canal:      ${CHANNEL_NAME}"
   echo "  Chaincode:  ${CC_NAME}"
@@ -167,7 +183,7 @@ function networkUp() {
   echo "  Orderer:    localhost:7050"
   echo "  CA Org1:    localhost:7054"
   echo "  Connection: ${PROJECT_DIR}/connection.json"
-  echo "  Log:        ${LOG_FILE}"
+  echo "  Log:        ${PROJECT_DIR}/fabric-network.log  (escrito por ARRANCAR/run-bash)"
 }
 
 case "${MODE}" in
