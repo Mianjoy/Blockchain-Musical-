@@ -348,6 +348,16 @@ El proyecto ya fuerza `MSYS_NO_PATHCONV` y convierte rutas con `cygpath`. Si aú
 
 Detalle del fallo: `fabric-network.log`
 
+### Error: `client version 1.25 is too old` / `Minimum supported API version is 1.40`
+
+Al **instalar el chaincode**, el peer intenta hacer `docker build`. Docker Desktop reciente exige API ≥ 1.40, y Fabric **2.5.4** usaba cliente 1.25.
+
+El proyecto ya usa **Fabric 2.5.15**. Para aplicar el cambio:
+
+1. (Opcional pero recomendado) Ejecuta **`FIX-DOCKER-API.bat`** → en Docker Desktop **Apply & Restart**
+2. Ejecuta **`REPARAR-FABRIC.bat`** (obliga a bajar imágenes nuevas y regenerar red)
+3. Ejecuta **`ARRANCAR.bat`**
+
 ### Red Fabric
 
 ```bash

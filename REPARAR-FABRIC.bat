@@ -10,7 +10,12 @@ echo  REPARAR RED HYPERLEDGER FABRIC
 echo ==============================================================
 echo.
 echo  Esto limpia la red y artefactos y vuelve a generarlos.
-echo  Usa esto si viste error 125 o fallo al levantar Fabric.
+echo  Usa esto si viste error 125, API 1.25 too old, o fallo Fabric.
+echo.
+echo  Nota: el proyecto usa Fabric 2.5.15 (compatible con Docker moderno).
+echo  Si el error fue "client version 1.25 is too old", ejecuta antes:
+echo     FIX-DOCKER-API.bat
+echo  y Apply ^& Restart en Docker Desktop.
 echo.
 
 call "%~dp0scripts\windows\refresh-path.bat"

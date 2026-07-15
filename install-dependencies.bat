@@ -251,10 +251,10 @@ if "!DOCKER_OK!"=="1" (
   set /p PULL_IMAGES="Descargar ahora las imagenes Fabric (peer/orderer/ca/tools)? (S/N): "
   if /i "!PULL_IMAGES!"=="S" (
     echo Descargando imagenes (puede tardar varios minutos^)...
-    docker pull hyperledger/fabric-peer:2.5.4
-    docker pull hyperledger/fabric-orderer:2.5.4
-    docker pull hyperledger/fabric-tools:2.5.4
-    docker pull hyperledger/fabric-ca:1.5.7
+    docker pull hyperledger/fabric-peer:2.5.15
+    docker pull hyperledger/fabric-orderer:2.5.15
+    docker pull hyperledger/fabric-tools:2.5.15
+    docker pull hyperledger/fabric-ca:1.5.15
     docker pull node:18-alpine
     echo [OK] Imagenes descargadas (o ya estaban en cache^).
   ) else (

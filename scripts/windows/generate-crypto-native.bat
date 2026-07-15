@@ -5,7 +5,7 @@ chcp 65001 >nul 2>nul
 cd /d "%~dp0\..\.."
 set "ROOT=%CD%"
 set "NET=%ROOT%\network"
-set "FABRIC_VER=2.5.4"
+set "FABRIC_VER=2.5.15"
 set "LOG=%ROOT%\fabric-network.log"
 
 call "%ROOT%\scripts\windows\refresh-path.bat"

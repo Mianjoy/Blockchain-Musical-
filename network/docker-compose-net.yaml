@@ -7,7 +7,7 @@ networks:
 
 services:
   ca_org1:
-    image: hyperledger/fabric-ca:${CA_IMAGE_TAG:-1.5.7}
+    image: hyperledger/fabric-ca:${CA_IMAGE_TAG:-1.5.15}
     container_name: ca_org1
     environment:
       - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
@@ -24,7 +24,7 @@ services:
       - fabric
 
   orderer.example.com:
-    image: hyperledger/fabric-orderer:${IMAGE_TAG:-2.5.4}
+    image: hyperledger/fabric-orderer:${IMAGE_TAG:-2.5.15}
     container_name: orderer.example.com
     environment:
       - FABRIC_LOGGING_SPEC=INFO
@@ -61,7 +61,7 @@ services:
       - fabric
 
   peer0.org1.example.com:
-    image: hyperledger/fabric-peer:${IMAGE_TAG:-2.5.4}
+    image: hyperledger/fabric-peer:${IMAGE_TAG:-2.5.15}
     container_name: peer0.org1.example.com
     environment:
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
@@ -99,7 +99,7 @@ services:
       - orderer.example.com
 
   cli:
-    image: hyperledger/fabric-tools:${IMAGE_TAG:-2.5.4}
+    image: hyperledger/fabric-tools:${IMAGE_TAG:-2.5.15}
     container_name: fabric-cli
     tty: true
     stdin_open: true
