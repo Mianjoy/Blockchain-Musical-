@@ -148,8 +148,25 @@ set "SRC=!ERRORLEVEL!"
 if not "!SRC!"=="0" (
   call :log "[ERROR] start-system.bat fallo con codigo !SRC!"
   echo.
-  echo  Revisa arranque.log y las ventanas de error.
-  echo  Logs Fabric: docker compose -f network\docker-compose-net.yaml logs
+  echo ==============================================================
+  echo  Fallo al arrancar ^(codigo !SRC!^)
+  echo ==============================================================
+  echo.
+  echo  Esto NO es un error de "Logs compose".
+  echo  Esa linea solo era una pista antigua; el fallo real esta en:
+  echo.
+  echo     fabric-network.log
+  echo     arranque.log
+  echo.
+  echo  Ejecuta ahora:  DIAGNOSTICO.bat
+  echo  Luego:          REPARAR-FABRIC.bat
+  echo  Y despues:      ARRANCAR.bat
+  echo.
+  if exist "%ROOT%\fabric-network.log" (
+    echo  --- Ultimas lineas fabric-network.log ---
+    powershell -NoProfile -Command "Get-Content -LiteralPath '%ROOT%\fabric-network.log' -Tail 30"
+    echo  -----------------------------------------
+  )
   pause
   exit /b 1
 )

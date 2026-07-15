@@ -9,6 +9,18 @@ printInfo "Generando certificados (cryptogen)..."
 printInfo "ROOT_DIR=${ROOT_DIR}"
 printInfo "Docker mount=$(toDockerPath "${ROOT_DIR}")"
 
+# En Windows preferir script .bat nativo (evita path mangling de Git Bash → error 125)
+uname_s="$(uname -s 2>/dev/null || echo unknown)"
+if [[ "${uname_s}" == MINGW* || "${uname_s}" == MSYS* || "${uname_s}" == CYGWIN* ]]; then
+  NATIVE_BAT="$(toDockerPath "${PROJECT_DIR}/scripts/windows/generate-crypto-native.bat")"
+  printInfo "Intentando generador nativo Windows: ${NATIVE_BAT}"
+  if cmd.exe /c "\"${NATIVE_BAT}\""; then
+    printSuccess "Crypto generado con script nativo Windows"
+    exit 0
+  fi
+  printWarn "Generador nativo fallo; reintentando con fabric-tools via bash..."
+fi
+
 rm -rf "${ROOT_DIR}/organizations/peerOrganizations" \
        "${ROOT_DIR}/organizations/ordererOrganizations" \
        "${ROOT_DIR}/channel-artifacts" \

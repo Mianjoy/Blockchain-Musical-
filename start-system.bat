@@ -95,19 +95,27 @@ echo.
 echo [INFO] Levantando Hyperledger Fabric ^(puede tardar varios minutos^)...
 call "%ROOT%\scripts\windows\run-bash.bat" network/scripts/network.sh up
 if errorlevel 1 (
-  echo [ERROR] Fallo al levantar la red Fabric.
   echo.
-  echo  Revisa estos archivos en la raiz del proyecto:
-  echo    - fabric-network.log
-  echo    - arranque.log
+  echo ==============================================================
+  echo  [ERROR] No se pudo levantar Hyperledger Fabric
+  echo ==============================================================
   echo.
-  echo  Si el codigo fue 125:
-  echo    1. Abre Docker Desktop ^(icono verde^)
-  echo    2. Settings ^> Resources ^> File sharing
-  echo    3. Marca la unidad del proyecto ^(C: / D:^) y Apply ^& Restart
-  echo    4. Ejecuta REPARAR-FABRIC.bat y luego ARRANCAR.bat
+  echo  El sistema se detuvo ANTES de abrir la web.
+  echo  El detalle real esta en:  fabric-network.log
   echo.
-  echo  Logs compose: docker compose -f network\docker-compose-net.yaml logs
+  echo  Pasos recomendados:
+  echo   1. Ejecuta DIAGNOSTICO.bat  ^(prueba Docker y montaje^)
+  echo   2. Docker Desktop en VERDE
+  echo   3. Settings ^> Resources ^> File sharing ^> marca D: o C:
+  echo   4. Apply ^& Restart
+  echo   5. Ejecuta REPARAR-FABRIC.bat
+  echo   6. Ejecuta ARRANCAR.bat otra vez
+  echo.
+  if exist "%ROOT%\fabric-network.log" (
+    echo  --- Ultimas lineas de fabric-network.log ---
+    powershell -NoProfile -Command "Get-Content -LiteralPath '%ROOT%\fabric-network.log' -Tail 25"
+    echo  --------------------------------------------
+  )
   if "!FROM_ARRANCAR!"=="0" pause
   exit /b 1
 )
