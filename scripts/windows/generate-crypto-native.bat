@@ -6,7 +6,8 @@ cd /d "%~dp0\..\.."
 set "ROOT=%CD%"
 set "NET=%ROOT%\network"
 set "FABRIC_VER=2.5.16"
-set "LOG=%ROOT%\fabric-network.log"
+if not exist "%ROOT%\logs" mkdir "%ROOT%\logs"
+set "LOG=%ROOT%\logs\fabric-network.log"
 
 call "%ROOT%\scripts\windows\refresh-path.bat"
 where docker >nul 2>nul

@@ -51,7 +51,7 @@ flowchart TB
   subgraph host["PC Windows / Host"]
     UI["Frontend Vite :3001"]
     API["API Express :3000"]
-    Wallet["wallet + connection.json"]
+    Wallet["wallet + config/connection.json"]
     Users[("data/users.json")]
   end
 
@@ -167,10 +167,10 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  A["FABRIC-UP.bat"] --> D["Docker: CA Peer Orderer CLI"]
+  A["Blockchain MUSIC - Fabric.exe"] --> D["Docker: CA Peer Orderer CLI"]
   D --> C["Crypto + canal + chaincode"]
-  C --> E["enroll: connection.json + wallet"]
-  E --> B["APP-UP.bat"]
+  C --> E["enroll: config/connection.json + wallet"]
+  E --> B["Blockchain MUSIC.exe"]
   B --> API["node index.js + SEED_DEMO"]
   B --> UI["npm run dev :3001"]
   API --> H{"Peer :7051?"}
@@ -209,7 +209,7 @@ O descarga ZIP → **Code → Download ZIP** y extráelo.
 Doble clic en:
 
 ```text
-install-dependencies.bat
+launchers\install-dependencies.bat
 ```
 
 Instala/verifica Node, (opcional) Git y Docker. También:
@@ -219,28 +219,34 @@ npm install
 cd frontend && npm install
 ```
 
-### 5.3 Arranque recomendado (Fabric + App)
+### 5.3 Arranque recomendado (los dos .exe)
+
+En la **raíz** del repo:
 
 ```text
 1) Abre Docker Desktop → espera icono verde
-2) FABRIC-UP.bat     → red blockchain (puede tardar varios minutos la 1ª vez)
-3) APP-UP.bat        → API + UI (si falta Fabric, cae a simulación)
+2) Blockchain MUSIC - Fabric.exe   → red blockchain (puede tardar varios minutos la 1ª vez)
+3) Blockchain MUSIC.exe            → API + UI (si falta Fabric, cae a simulación)
 ```
+
+Lee también `EMPEZAR.txt` en la raíz.
+
+### 5.4 Scripts avanzados (`launchers\`)
 
 | Script | Función |
 |--------|---------|
-| `FABRIC-UP.bat` | Solo Fabric 2.5.16 (contenedores + canal + chaincode + wallet) |
-| `FABRIC-DOWN.bat` | Solo apaga Fabric |
-| `APP-UP.bat` | API + frontend |
-| `ARRANCAR-DEMO.bat` | Solo simulación (sin Docker) |
-| `ARRANCAR.bat` | Menú de opciones: Fabric+App, DEMO, solo Fabric o solo App. Args: `/demo`, `/fabric`, `/app` |
-| `CERRAR-TODO.bat` / `DETENER.bat` | Cierra API, UI y Fabric |
-| `crear-acceso-directo.bat` | Icono en el Escritorio apuntando a `ARRANCAR.bat` |
-| `REPARAR-FABRIC.bat` | Limpia y regenera la red |
-| `FIX-DOCKER-API.bat` | Mitiga error API Docker 1.25 al instalar chaincode |
-| `DIAGNOSTICO.bat` | Prueba Docker y montaje de volúmenes |
+| `launchers\FABRIC-UP.bat` | Solo Fabric 2.5.16 (contenedores + canal + chaincode + wallet) |
+| `launchers\FABRIC-DOWN.bat` | Solo apaga Fabric |
+| `launchers\APP-UP.bat` | API + frontend |
+| `launchers\ARRANCAR-DEMO.bat` | Solo simulación (sin Docker) |
+| `launchers\ARRANCAR.bat` | Menú: Fabric+App, DEMO, solo Fabric o solo App. Args: `/demo`, `/fabric`, `/app` |
+| `launchers\CERRAR-TODO.bat` / `DETENER.bat` | Cierra API, UI y Fabric |
+| `launchers\crear-acceso-directo.bat` | Accesos en el Escritorio a los `.exe` |
+| `launchers\REPARAR-FABRIC.bat` | Limpia y regenera la red |
+| `launchers\FIX-DOCKER-API.bat` | Mitiga error API Docker 1.25 al instalar chaincode |
+| `launchers\DIAGNOSTICO.bat` | Prueba Docker y montaje de volúmenes |
 
-### 5.4 URLs
+### 5.5 URLs
 
 | Qué | URL |
 |-----|-----|
@@ -256,12 +262,12 @@ http://localhost:3000/health
 → fabric.connected: true   (o simulation: true)
 ```
 
-### 5.5 Compose
+### 5.6 Compose
 
 ```text
-docker-compose.fabric.yml         # peer, orderer, CA, CLI (red music-royalty-fabric)
+docker/docker-compose.fabric.yml  # peer, orderer, CA, CLI (red music-royalty-fabric)
 network/docker-compose-net.yaml   # compose usado por fabric-up.bat
-docker-compose.app.yml            # API opcional en la misma red Docker
+docker/docker-compose.app.yml     # API opcional en la misma red Docker
 ```
 
 ---
@@ -328,7 +334,7 @@ Variables útiles:
 | `ALLOW_SIMULATION=true` | Permite API sin Fabric |
 | `SEED_DEMO=false` | No genera catálogo demo |
 | `SEED_DEMO_FORCE=true` | Intenta completar demos faltantes |
-| `CONNECTION_PROFILE` | Ruta a `connection.json` |
+| `CONNECTION_PROFILE` | Ruta a `config/connection.json` |
 | `FABRIC_AS_LOCALHOST` | `true` si la API corre en el host Windows |
 
 ---
@@ -349,23 +355,34 @@ Blockchain-Musical-/
 ├── chaincode/music-royalty/
 ├── frontend/               # React + Vite (app oficial)
 ├── network/                # Compose, configtx, scripts Fabric
+├── docker/                 # docker-compose.fabric.yml / app.yml
+├── config/                 # connection.json (generado; .example versionado)
+├── logs/                   # fabric-network.log, fabric-workflow.log
+├── tests/                  # tests del proyecto
 ├── scripts/windows/        # fabric-up, start-app, docker helpers
+├── launchers/              # .bat de usuario (APP-UP, FABRIC-UP, ...)
+├── packaging/              # fuentes C# + iconos de los .exe
 ├── data/                   # users.json (local, gitignored)
 ├── wallet/                 # Identidad SDK (gitignored)
-├── FABRIC-UP.bat / APP-UP.bat / ...
+├── package.json / index.js # Entrada Node (permanecen en la raíz)
+├── Blockchain MUSIC.exe
+├── Blockchain MUSIC - Fabric.exe
+├── EMPEZAR.txt
 └── README.md
 ```
 
-No versionar: `connection.json`, `wallet/*`, crypto MSP, `data/users.json`, `*.log`.
+La **raíz** queda para: los dos `.exe`, `EMPEZAR.txt`, `README.md`, y también `package.json` / `index.js` (Node los necesita ahí + `node_modules`).
+
+No versionar: `config/connection.json`, `wallet/*`, crypto MSP, `data/users.json`, `*.log`.
 
 ---
 
 ## 9. Scripts útiles
 
 ```bat
-REPARAR-FABRIC.bat
-FIX-DOCKER-API.bat
-DIAGNOSTICO.bat
+launchers\REPARAR-FABRIC.bat
+launchers\FIX-DOCKER-API.bat
+launchers\DIAGNOSTICO.bat
 ```
 
 Manual Fabric (CMD):
@@ -377,20 +394,30 @@ scripts\windows\fabric-up.bat clean
 node scripts\enrollAppUser.js
 ```
 
----
+### Lanzadores Windows (.exe)
+
+En la **raíz** del repo (copia también en `dist\`):
+
+| Archivo | Icono | Acción |
+|---------|-------|--------|
+| `Blockchain MUSIC.exe` | nota musical | Arranca `launchers\APP-UP.bat` (API + frontend) |
+| `Blockchain MUSIC - Fabric.exe` | logo Hyperledger Fabric | Arranca `launchers\FABRIC-UP.bat` (red Fabric) |
+
+Recompilar: `packaging\build-exes.bat`  
+Accesos en Escritorio: `launchers\crear-acceso-directo.bat`
 
 ## 10. Solución de problemas
 
 | Problema | Qué hacer |
 |----------|-----------|
 | `fabric-tools:3.x not found` | El proyecto usa **2.5.16** (tools 3.x ya no se publica) |
-| Docker no en PATH / no responde | Abrir Docker Desktop en verde; `FABRIC-UP.bat` espera el CLI |
+| Docker no en PATH / no responde | Abrir Docker Desktop en verde; `Blockchain MUSIC - Fabric.exe` / `launchers\FABRIC-UP.bat` espera el CLI |
 | Error volúmenes / 125 | File sharing de la unidad del repo en Docker Desktop |
-| `client version 1.25 is too old` | `FIX-DOCKER-API.bat` → Apply & Restart → `REPARAR-FABRIC.bat` |
-| `discovery error: access denied` / `unknown authority` | Crypto/volumen desalineados: `REPARAR-FABRIC.bat` (borra volúmenes Docker + regenera MSP). Luego `APP-UP.bat` |
-| Canal sin `height` ilegible | Ya hay auto-reset; si falla: `REPARAR-FABRIC.bat` |
-| API en simulación con Fabric “arriba” | Ejecuta `REPARAR-FABRIC.bat` y arranca con `ARRANCAR.bat` (modo Fabric estricto) |
-| API busca `connection.json` mal | Debe estar en la **raíz del repo** (generado por `FABRIC-UP`) |
+| `client version 1.25 is too old` | `launchers\FIX-DOCKER-API.bat` → Apply & Restart → `launchers\REPARAR-FABRIC.bat` |
+| `discovery error: access denied` / `unknown authority` | Crypto/volumen desalineados: `launchers\REPARAR-FABRIC.bat` (borra volúmenes Docker + regenera MSP). Luego App exe |
+| Canal sin `height` ilegible | Ya hay auto-reset; si falla: `launchers\REPARAR-FABRIC.bat` |
+| API en simulación con Fabric “arriba” | Ejecuta `launchers\REPARAR-FABRIC.bat` y luego los dos `.exe` (o `launchers\ARRANCAR.bat`) |
+| API busca `connection.json` mal | Debe estar en **`config/connection.json`** (generado por `FABRIC-UP`) |
 | Mis compras genéricas | Ya se listan por `@` real; reinicia API tras actualizar |
 | Catálogo vacío | Reinicia API (`SEED_DEMO=true`) o `POST /api/admin/seed-demo` |
 

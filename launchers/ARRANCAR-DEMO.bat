@@ -2,7 +2,8 @@
 setlocal
 chcp 65001 >nul 2>nul
 title Music Royalty - DEMO (simulacion)
-cd /d "%~dp0"
+cd /d "%~dp0.."
+set "ROOT=%CD%"
 
 echo.
 echo ==============================================================
@@ -13,7 +14,7 @@ echo  Blockchain: memoria ^(ALLOW_SIMULATION=true^)
 echo ==============================================================
 echo.
 
-call "%~dp0scripts\windows\refresh-path.bat"
+call "%ROOT%\scripts\windows\refresh-path.bat"
 where node >nul 2>nul
 if errorlevel 1 (
   if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
@@ -25,7 +26,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-call "%~dp0scripts\windows\start-app.bat" simulation
+call "%ROOT%\scripts\windows\start-app.bat" simulation
 echo.
 pause
 endlocal

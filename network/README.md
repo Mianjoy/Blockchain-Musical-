@@ -15,8 +15,9 @@ Documentación completa (instalación Windows, diagramas, troubleshooting): **[R
 ## Arranque rápido (Windows nativo)
 
 ```bat
-FABRIC-UP.bat
-REPARAR-FABRIC.bat
+..\Blockchain MUSIC - Fabric.exe
+..\launchers\FABRIC-UP.bat
+..\launchers\REPARAR-FABRIC.bat
 ```
 
 ```bat
@@ -34,4 +35,4 @@ bash network/scripts/network.sh clean
 bash network/scripts/network.sh enroll
 ```
 
-Artefactos generados (MSP, channel block, `connection.json`) **no se versionan**.
+Artefactos generados (MSP, channel block, `config/connection.json`) **no se versionan**.

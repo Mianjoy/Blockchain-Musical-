@@ -14,11 +14,20 @@ logs/*
 diagnostico.txt
 network/.dockertest/
 
+# Windows launchers (build locally)
+Blockchain MUSIC.exe
+Blockchain MUSIC - Fabric.exe
+packaging/dist/*.exe
+
 # Hyperledger Fabric generated
 wallet/*
 !wallet/.gitkeep
 connection.json
 connection-docker.json
+config/connection.json
+config/connection-docker.json
+!config/connection.json.example
+!config/.gitkeep
 network/connection-profile/
 network/organizations/peerOrganizations/
 network/organizations/ordererOrganizations/

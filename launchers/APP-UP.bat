@@ -7,8 +7,9 @@
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>nul
 title Music Royalty - APP UP
-cd /d "%~dp0"
+cd /d "%~dp0.."
 set "ROOT=%CD%"
+set "LAUNCHERS=%~dp0"
 set "NOPAUSE=0"
 if /i "%~1"=="/nopause" set "NOPAUSE=1"
 if /i "%~1"=="/from-arrancar" set "NOPAUSE=1"
@@ -50,22 +51,22 @@ if "!PEER_UP!"=="1" (
       set "PEER_UP=0"
     )
   ) else (
-    echo [AVISO] Falta crypto MSP en network\organizations. Ejecuta FABRIC-UP.bat
+    echo [AVISO] Falta crypto MSP en network\organizations. Ejecuta launchers\FABRIC-UP.bat
     set "PEER_UP=0"
   )
 )
 
 set "FABRIC_READY=0"
-if "!PEER_UP!"=="1" if exist "%ROOT%\connection.json" set "FABRIC_READY=1"
+if "!PEER_UP!"=="1" if exist "%ROOT%\config\connection.json" set "FABRIC_READY=1"
 
 if "!FABRIC_READY!"=="1" (
   echo [OK] Fabric detectado — API en modo FABRIC
-  echo      connection: %ROOT%\connection.json
+  echo      connection: %ROOT%\config\connection.json
   call "%ROOT%\scripts\windows\start-app.bat" fabric
 ) else (
-  echo [AVISO] Fabric NO esta listo ^(peer o connection.json^).
+  echo [AVISO] Fabric NO esta listo ^(peer o config\connection.json^).
   echo         Arrancando APP en SIMULACION.
-  echo         Para blockchain real: ejecuta antes FABRIC-UP.bat
+  echo         Para blockchain real: ejecuta "Blockchain MUSIC - Fabric.exe" o launchers\FABRIC-UP.bat
   echo.
   call "%ROOT%\scripts\windows\start-app.bat" simulation
 )

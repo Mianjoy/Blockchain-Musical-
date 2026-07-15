@@ -3,8 +3,7 @@
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>nul
 title Diagnostico Music Royalty
-cd /d "%~dp0"
-
+cd /d "%~dp0.."
 set "ROOT=%CD%"
 set "OUT=%ROOT%\diagnostico.txt"
 echo.>"%OUT%"
@@ -79,7 +78,7 @@ type "%OUT%"
 echo -------------------------------------
 echo.
 echo Si el montaje de volumen FALLO, hay que habilitar File sharing.
-echo Luego ejecuta REPARAR-FABRIC.bat y ARRANCAR.bat
+echo Luego ejecuta launchers\REPARAR-FABRIC.bat y los .exe de la raiz
 echo.
 pause
 endlocal

@@ -1,5 +1,5 @@
 @echo off
-:: Ejecuta network/scripts/*.sh y guarda la salida en fabric-network.log
+:: Ejecuta network/scripts/*.sh y guarda la salida en logs\fabric-network.log
 :: (el .sh NO debe abrir ese mismo archivo o Windows da "Device or resource busy")
 setlocal EnableDelayedExpansion
 
@@ -17,7 +17,8 @@ if "%~1"=="" (
 set "SH_REL=%~1"
 set "SH_ARG=%~2"
 set "WIN_ROOT=%CD%"
-set "LOG_FILE=%WIN_ROOT%\fabric-network.log"
+if not exist "%WIN_ROOT%\logs" mkdir "%WIN_ROOT%\logs"
+set "LOG_FILE=%WIN_ROOT%\logs\fabric-network.log"
 set "TMP_OUT=%TEMP%\fabric-run-%RANDOM%.log"
 
 set "DRIVE=!WIN_ROOT:~0,1!"
@@ -59,10 +60,10 @@ if not "!RC!"=="0" (
     echo  1^) Docker Desktop en VERDE
     echo  2^) Settings ^> Resources ^> File sharing ^> marca unidad del proyecto
     echo  3^) Apply ^& Restart
-    echo  4^) REPARAR-FABRIC.bat y luego ARRANCAR.bat
+    echo  4^) launchers\REPARAR-FABRIC.bat y luego los .exe de la raiz
     echo.
   )
-  echo  Log completo: fabric-network.log
+  echo  Log completo: logs\fabric-network.log
   echo.
 )
 

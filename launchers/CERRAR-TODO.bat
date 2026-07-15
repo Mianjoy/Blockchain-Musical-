@@ -6,7 +6,7 @@
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>nul
 title Music Royalty - Cerrar TODO
-cd /d "%~dp0"
+cd /d "%~dp0.."
 set "ROOT=%CD%"
 set "NET=%ROOT%\network"
 
@@ -89,6 +89,11 @@ for /f "tokens=*" %%i in ('docker ps -aq --filter "name=dev-peer" 2^>nul') do (
 )
 
 :: compose de API en Docker, si existe
+if exist "%ROOT%\docker\docker-compose.app.yml" (
+  pushd "%ROOT%"
+  docker compose -f docker\docker-compose.app.yml down --remove-orphans >nul 2>&1
+  popd
+)
 if exist "%ROOT%\docker-compose.app.yml" (
   pushd "%ROOT%"
   docker compose -f docker-compose.app.yml down --remove-orphans >nul 2>&1
@@ -103,10 +108,10 @@ echo ==============================================================
 echo  API / Frontend / Fabric detenidos ^(o ya estaban apagados^).
 echo.
 echo  Para volver a arrancar:
-echo    ARRANCAR.bat        ^(muestra menu de opciones^)
-echo    ARRANCAR.bat /demo  ^(solo simulacion, sin menu^)
-echo    FABRIC-UP.bat       ^(solo Fabric^)
-echo    APP-UP.bat          ^(solo API + UI^)
+echo    Blockchain MUSIC - Fabric.exe   ^(Fabric^)
+echo    Blockchain MUSIC.exe            ^(API + UI^)
+echo    launchers\ARRANCAR.bat          ^(completo / menu^)
+echo    launchers\ARRANCAR.bat /demo    ^(solo simulacion^)
 echo.
 pause
 exit /b 0

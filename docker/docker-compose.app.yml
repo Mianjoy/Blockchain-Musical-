@@ -1,21 +1,17 @@
 # =============================================================================
 # Stack SOLO aplicación (API Express). El frontend suele ir por Vite en el host.
-# Se conecta a Fabric en la red externa music-royalty-fabric (FABRIC-UP.bat).
+# Se conecta a Fabric en la red externa music-royalty-fabric.
 #
-# Uso típico Windows (host):
-#   1) FABRIC-UP.bat
-#   2) APP-UP.bat
-#
-# Uso Docker de la API:
-#   docker compose -f docker-compose.app.yml up -d --build
+# Desde la raíz del repo:
+#   docker compose -f docker/docker-compose.app.yml up -d --build
 # =============================================================================
 name: music-royalty-app
 
 services:
   api:
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: docker/Dockerfile
     container_name: music-royalty-api
     ports:
       - "3000:3000"
@@ -27,11 +23,11 @@ services:
       - CHAINCODE_NAME=music-royalty
       - ALLOW_SIMULATION=${ALLOW_SIMULATION:-false}
       - FABRIC_AS_LOCALHOST=false
-      - CONNECTION_PROFILE=/app/connection-docker.json
+      - CONNECTION_PROFILE=/app/config/connection-docker.json
     volumes:
-      - ./wallet:/app/wallet
-      - ./connection.json:/app/connection.json:ro
-      - ./connection-docker.json:/app/connection-docker.json:ro
+      - ../wallet:/app/wallet
+      - ../config/connection.json:/app/config/connection.json:ro
+      - ../config/connection-docker.json:/app/config/connection-docker.json:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

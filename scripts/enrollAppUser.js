@@ -176,7 +176,7 @@ async function main() {
   console.log('=== Generando connection.json y wallet ===');
 
   if (!fs.existsSync(PEER_TLS) || !fs.existsSync(ORDERER_TLS)) {
-    throw new Error('Certificados TLS no encontrados. Genera la red primero (FABRIC-UP.bat)');
+    throw new Error('Certificados TLS no encontrados. Genera la red primero (Blockchain MUSIC - Fabric.exe o launchers\\FABRIC-UP.bat)');
   }
 
   const connectionHost = buildConnectionProfile({
@@ -184,7 +184,10 @@ async function main() {
     ordererHost: 'localhost',
     caHost: 'localhost'
   });
-  const connectionPath = path.join(PROJECT_ROOT, 'connection.json');
+  const configDir = path.join(PROJECT_ROOT, 'config');
+  fs.mkdirSync(configDir, { recursive: true });
+
+  const connectionPath = path.join(PROJECT_ROOT, 'config', 'connection.json');
   fs.writeFileSync(connectionPath, JSON.stringify(connectionHost, null, 2));
   console.log(`[OK] connection.json (host/localhost) → ${connectionPath}`);
 
@@ -193,7 +196,7 @@ async function main() {
     ordererHost: 'orderer.example.com',
     caHost: 'ca_org1'
   });
-  const connectionDockerPath = path.join(PROJECT_ROOT, 'connection-docker.json');
+  const connectionDockerPath = path.join(PROJECT_ROOT, 'config', 'connection-docker.json');
   fs.writeFileSync(connectionDockerPath, JSON.stringify(connectionDocker, null, 2));
   console.log(`[OK] connection-docker.json (red Docker) → ${connectionDockerPath}`);
 

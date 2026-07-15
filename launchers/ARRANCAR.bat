@@ -2,8 +2,9 @@
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>nul
 title Music Royalty - Arrancar (Fabric + App)
-cd /d "%~dp0"
+cd /d "%~dp0.."
 set "ROOT=%CD%"
+set "LAUNCHERS=%~dp0"
 
 :: Uso:
 ::   ARRANCAR.bat          -> Fabric + API + UI (sin simulacion)
@@ -13,15 +14,15 @@ set "ROOT=%CD%"
 ::   ARRANCAR.bat /menu    -> menu
 
 if /i "%~1"=="/demo" (
-  call "%ROOT%\ARRANCAR-DEMO.bat"
+  call "%LAUNCHERS%ARRANCAR-DEMO.bat"
   exit /b !ERRORLEVEL!
 )
 if /i "%~1"=="/fabric" (
-  call "%ROOT%\FABRIC-UP.bat"
+  call "%LAUNCHERS%FABRIC-UP.bat"
   exit /b !ERRORLEVEL!
 )
 if /i "%~1"=="/app" (
-  call "%ROOT%\APP-UP.bat"
+  call "%LAUNCHERS%APP-UP.bat"
   exit /b !ERRORLEVEL!
 )
 if /i "%~1"=="/menu" goto menu
@@ -41,7 +42,7 @@ if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%
 
 where node >nul 2>nul
 if errorlevel 1 (
-  echo [ERROR] Node.js no encontrado. Ejecuta install-dependencies.bat
+  echo [ERROR] Node.js no encontrado. Ejecuta launchers\install-dependencies.bat
   pause
   exit /b 1
 )
@@ -49,22 +50,22 @@ if errorlevel 1 (
 echo.
 echo [1/2] Levantando Hyperledger Fabric...
 echo.
-call "%ROOT%\FABRIC-UP.bat" /nopause
+call "%LAUNCHERS%FABRIC-UP.bat" /nopause
 if errorlevel 1 (
   echo.
   echo [AVISO] Fabric fallo. Reparando desde cero ^(volumenes + crypto^)...
   echo.
   call "%ROOT%\scripts\windows\fabric-up.bat" clean
-  call "%ROOT%\FABRIC-UP.bat" /nopause
+  call "%LAUNCHERS%FABRIC-UP.bat" /nopause
   if errorlevel 1 (
     echo.
     echo [ERROR] No se pudo levantar Fabric real.
     echo         1^) Docker Desktop en verde
-    echo         2^) FIX-DOCKER-API.bat si aparece error 1.25
-    echo         3^) REPARAR-FABRIC.bat
-    echo         Revisa: fabric-network.log
+    echo         2^) launchers\FIX-DOCKER-API.bat si aparece error 1.25
+    echo         3^) launchers\REPARAR-FABRIC.bat
+    echo         Revisa: logs\fabric-network.log
     echo.
-    echo Para UI sin blockchain: ARRANCAR.bat /demo
+    echo Para UI sin blockchain: launchers\ARRANCAR.bat /demo
     echo.
     pause
     exit /b 1
@@ -75,7 +76,7 @@ echo.
 echo [2/2] Levantando API + Frontend en modo FABRIC...
 echo.
 :: Forzar modo fabric estricto (APP-UP detecta peer + connection.json)
-call "%ROOT%\APP-UP.bat" /nopause
+call "%LAUNCHERS%APP-UP.bat" /nopause
 set "RC=!ERRORLEVEL!"
 
 echo.
@@ -87,7 +88,7 @@ echo  API:     http://localhost:3000/api
 echo  Health:  http://localhost:3000/health
 echo           ^(debe decir fabric.connected / simulation:false^)
 echo.
-echo  Detener: DETENER.bat  /  CERRAR-TODO.bat
+echo  Detener: launchers\DETENER.bat  /  launchers\CERRAR-TODO.bat
 echo ==============================================================
 echo.
 pause
@@ -113,15 +114,15 @@ if "!OPT!"=="1" (
   exit /b !ERRORLEVEL!
 )
 if "!OPT!"=="2" (
-  call "%ROOT%\ARRANCAR-DEMO.bat"
+  call "%LAUNCHERS%ARRANCAR-DEMO.bat"
   exit /b !ERRORLEVEL!
 )
 if "!OPT!"=="3" (
-  call "%ROOT%\FABRIC-UP.bat"
+  call "%LAUNCHERS%FABRIC-UP.bat"
   exit /b !ERRORLEVEL!
 )
 if "!OPT!"=="4" (
-  call "%ROOT%\APP-UP.bat"
+  call "%LAUNCHERS%APP-UP.bat"
   exit /b !ERRORLEVEL!
 )
 exit /b 0

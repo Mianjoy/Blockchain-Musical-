@@ -5,7 +5,7 @@ UI oficial del sistema (React + Vite). Documentación completa de instalación y
 ## Desarrollo local
 
 ```bash
-# La API debe estar en :3000 (APP-UP.bat o npm start en la raíz)
+# La API debe estar en :3000 (Blockchain MUSIC.exe / launchers\APP-UP.bat o npm start en la raíz)
 cd frontend
 npm install
 npm run dev

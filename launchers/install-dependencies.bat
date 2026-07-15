@@ -2,7 +2,9 @@
 setlocal EnableDelayedExpansion
 chcp 65001 >nul
 title Instalador de dependencias - Music Royalty Blockchain
-cd /d "%~dp0"
+cd /d "%~dp0.."
+set "ROOT=%CD%"
+set "LAUNCHERS=%~dp0"
 
 echo.
 echo ============================================================
@@ -258,7 +260,7 @@ if "!DOCKER_OK!"=="1" (
     docker pull node:18-alpine
     echo [OK] Imagenes descargadas (o ya estaban en cache^).
   ) else (
-    echo [INFO] Se descargaran automaticamente la primera vez que ejecutes start-system.bat
+    echo [INFO] Se descargaran automaticamente la primera vez que ejecutes Fabric
   )
 ) else (
   echo [SALTADO] Docker no esta listo; no se descargan imagenes.
@@ -283,18 +285,21 @@ if "!NODE_OK!"=="1" if "!GIT_OK!"=="1" if "!DOCKER_OK!"=="1" if "!NPM_OK!"=="1" 
   echo.
   set /p START_NOW="Deseas iniciar el sistema ahora con start-system.bat? (S/N): "
   if /i "!START_NOW!"=="S" (
-    call "%~dp0start-system.bat"
+    call "%LAUNCHERS%start-system.bat"
     exit /b 0
   )
   echo.
-  echo Cuando quieras arrancar, ejecuta: start-system.bat
+  echo Cuando quieras arrancar:
+  echo   1^) Blockchain MUSIC - Fabric.exe
+  echo   2^) Blockchain MUSIC.exe
+  echo   ^(o launchers\ARRANCAR.bat^)
   pause
   exit /b 0
 )
 
 echo Aun faltan dependencias. Completa las marcadas como FALTA,
 echo cierra y vuelve a abrir esta ventana, y ejecuta de nuevo:
-echo   install-dependencies.bat
+echo   launchers\install-dependencies.bat
 echo.
 pause
 exit /b 1

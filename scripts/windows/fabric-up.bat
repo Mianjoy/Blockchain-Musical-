@@ -10,9 +10,10 @@ cd /d "%~dp0\..\.."
 set "ROOT=%CD%"
 set "NET=%ROOT%\network"
 set "CC=%ROOT%\chaincode\music-royalty"
-set "LOG=%ROOT%\fabric-network.log"
+if not exist "%ROOT%\logs" mkdir "%ROOT%\logs"
+if not exist "%ROOT%\config" mkdir "%ROOT%\config"
+set "LOG=%ROOT%\logs\fabric-network.log"
 set "WFLOG=%ROOT%\logs\fabric-workflow.log"
-if not exist "%ROOT%\logs" mkdir "%ROOT%\logs" 2>nul
 set "FABRIC_VER=2.5.16"
 set "CA_VER=1.5.21"
 set "CHANNEL=mychannel"
@@ -31,7 +32,7 @@ call "%ROOT%\scripts\windows\refresh-path.bat"
 if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
 call "%ROOT%\scripts\windows\find-docker.bat"
 if errorlevel 1 (
-  call :err "docker.exe no encontrado. Abre Docker Desktop o ejecuta FABRIC-UP.bat / install-dependencies.bat"
+  call :err "docker.exe no encontrado. Abre Docker Desktop o ejecuta Blockchain MUSIC - Fabric.exe / launchers\install-dependencies.bat"
   exit /b 1
 )
 if not defined MR_COMPOSE set "MR_COMPOSE=docker compose"
@@ -57,7 +58,7 @@ pushd "%NET%"
 %MR_COMPOSE% -f docker-compose-net.yaml down --volumes --remove-orphans >nul 2>&1
 popd
 pushd "%ROOT%"
-%MR_COMPOSE% -f docker-compose.fabric.yml down --volumes --remove-orphans >nul 2>&1
+%MR_COMPOSE% -f docker\docker-compose.fabric.yml down --volumes --remove-orphans >nul 2>&1
 popd
 :: Contenedores por nombre (por si compose no los bajo)
 for %%N in (
@@ -94,6 +95,8 @@ if exist "%NET%\organizations\fabric-ca\org1" rmdir /s /q "%NET%\organizations\f
 if exist "%NET%\connection-profile" rmdir /s /q "%NET%\connection-profile"
 if exist "%ROOT%\connection.json" del /f /q "%ROOT%\connection.json"
 if exist "%ROOT%\connection-docker.json" del /f /q "%ROOT%\connection-docker.json"
+if exist "%ROOT%\config\connection.json" del /f /q "%ROOT%\config\connection.json"
+if exist "%ROOT%\config\connection-docker.json" del /f /q "%ROOT%\config\connection-docker.json"
 if exist "%ROOT%\wallet" rmdir /s /q "%ROOT%\wallet"
 mkdir "%ROOT%\wallet" 2>nul
 call :purge_fabric_volumes
@@ -159,14 +162,14 @@ call :log "  Usando network/docker-compose-net.yaml"
 set "RC=!ERRORLEVEL!"
 popd
 if not "!RC!"=="0" (
-  call :log "  Fallback a docker-compose.fabric.yml (raiz)..."
+  call :log "  Fallback a docker/docker-compose.fabric.yml..."
   pushd "%ROOT%"
-  %MR_COMPOSE% -f docker-compose.fabric.yml up -d >>"%LOG%" 2>&1
+  %MR_COMPOSE% -f docker\docker-compose.fabric.yml up -d >>"%LOG%" 2>&1
   set "RC=!ERRORLEVEL!"
   popd
 )
 if not "!RC!"=="0" (
-  call :err "docker compose up fallo (!RC!). Revisa File sharing y fabric-network.log"
+  call :err "docker compose up fallo (!RC!). Revisa File sharing y logs\fabric-network.log"
   exit /b !RC!
 )
 
@@ -202,7 +205,7 @@ if errorlevel 1 (
     call :do_clean
     goto do_up
   )
-  call :err "Identidad MSP sigue invalida tras reset. Revisa fabric-network.log"
+  call :err "Identidad MSP sigue invalida tras reset. Revisa logs\fabric-network.log"
   exit /b 1
 )
 
@@ -232,7 +235,7 @@ if errorlevel 1 (
       call :do_clean
       goto do_up
     )
-    call :err "Canal ilegible tras reset. Revisa fabric-network.log y ejecuta REPARAR-FABRIC.bat"
+    call :err "Canal ilegible tras reset. Revisa logs\fabric-network.log y ejecuta launchers\REPARAR-FABRIC.bat"
     type "%TEMP%\mr-chinfo.txt"
     exit /b 1
   )
@@ -293,6 +296,8 @@ if errorlevel 1 (
 )
 if exist "%ROOT%\wallet" rmdir /s /q "%ROOT%\wallet"
 mkdir "%ROOT%\wallet" 2>nul
+if not exist "%ROOT%\config" mkdir "%ROOT%\config"
+if exist "%ROOT%\config\connection.json" del /f /q "%ROOT%\config\connection.json"
 if exist "%ROOT%\connection.json" del /f /q "%ROOT%\connection.json"
 pushd "%ROOT%"
 set "FORCE_REENROLL=1"
@@ -308,7 +313,7 @@ call :log "[7b/7] Verificando SDK (Gateway + discovery)..."
 pushd "%ROOT%"
 set "ALLOW_SIMULATION=false"
 set "FABRIC_AS_LOCALHOST=true"
-set "CONNECTION_PROFILE=%ROOT%\connection.json"
+set "CONNECTION_PROFILE=%ROOT%\config\connection.json"
 set "CHANNEL_NAME=%CHANNEL%"
 set "CHAINCODE_NAME=%CC_NAME%"
 node scripts\verifyFabricSdk.js >>"%LOG%" 2>&1
@@ -321,7 +326,7 @@ if not "!RC!"=="0" (
     call :do_clean
     goto do_up
   )
-  call :err "SDK no conecta tras reset. Revisa fabric-network.log"
+  call :err "SDK no conecta tras reset. Revisa logs\fabric-network.log"
   exit /b 1
 )
 

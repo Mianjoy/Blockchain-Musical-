@@ -22,7 +22,7 @@ class HyperledgerFabricService extends IBlockchainService {
       connectionProfile:
         config.connectionProfile ||
         process.env.CONNECTION_PROFILE ||
-        path.join(projectRoot, 'connection.json'),
+        path.join(projectRoot, 'config', 'connection.json'),
       channelName: config.channelName || process.env.CHANNEL_NAME || 'mychannel',
       chaincodeName: config.chaincodeName || process.env.CHAINCODE_NAME || 'music-royalty',
       mspId: config.mspId || 'Org1MSP',
@@ -63,7 +63,7 @@ class HyperledgerFabricService extends IBlockchainService {
     const connectionPath = this.config.connectionProfile;
     if (!fs.existsSync(connectionPath)) {
       return this._activarSimulacionOFallar(
-        `No existe connection.json en ${connectionPath}. Ejecuta FABRIC-UP.bat o network/scripts/network.sh up`
+        `No existe connection.json en ${connectionPath}. Ejecuta "Blockchain MUSIC - Fabric.exe" o launchers\\FABRIC-UP.bat`
       );
     }
 

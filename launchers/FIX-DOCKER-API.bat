@@ -2,7 +2,7 @@
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>nul
 title Fix Docker API para Hyperledger Fabric
-cd /d "%~dp0"
+cd /d "%~dp0.."
 
 echo ============================================================
 echo  FIX Docker API ^(Fabric chaincode / error client 1.25^)
@@ -48,8 +48,8 @@ echo.
 echo SIGUIENTE:
 echo  1. Abre Docker Desktop
 echo  2. Settings ^> Docker Engine ^> Apply ^& Restart
-echo  3. Ejecuta REPARAR-FABRIC.bat
-echo  4. Luego FABRIC-UP.bat o ARRANCAR.bat
+echo  3. Ejecuta launchers\REPARAR-FABRIC.bat
+echo  4. Luego Blockchain MUSIC - Fabric.exe o launchers\FABRIC-UP.bat
 echo.
 pause
 endlocal

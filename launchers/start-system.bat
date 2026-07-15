@@ -2,8 +2,7 @@
 setlocal EnableDelayedExpansion
 chcp 65001 >nul 2>nul
 title Music Royalty - Hyperledger Fabric
-cd /d "%~dp0"
-
+cd /d "%~dp0.."
 set "ROOT=%CD%"
 set "FROM_ARRANCAR=0"
 set "FORCE_SIM=0"

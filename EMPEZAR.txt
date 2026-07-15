@@ -1,0 +1,51 @@
+========================================
+  Blockchain MUSIC - Cómo empezar
+========================================
+
+En esta carpeta solo te importan los dos .exe y este archivo.
+El resto son carpetas técnicas (no las abras salvo desarrollar).
+package.json e index.js quedan en la raíz porque Node los necesita;
+ignóralos si solo usas los .exe.
+
+Lo esencial en la raíz
+----------------------
+  Blockchain MUSIC.exe
+  Blockchain MUSIC - Fabric.exe
+  EMPEZAR.txt
+
+Primera vez
+-----------
+1) Abre Docker Desktop y espera el icono en verde.
+2) (Opcional) Doble clic en:  launchers\install-dependencies.bat
+
+Arranque normal (recomendado)
+-----------------------------
+1) Doble clic:  "Blockchain MUSIC - Fabric.exe"
+      - Levanta Hyperledger Fabric (puede tardar la 1ª vez).
+      - Genera config\connection.json + wallet
+
+2) Doble clic:  "Blockchain MUSIC.exe"
+      - Levanta la API + la interfaz web.
+      - UI:     http://localhost:3001
+      - API:    http://localhost:3000/api
+      - Health: http://localhost:3000/health
+
+Detener todo
+------------
+  launchers\CERRAR-TODO.bat
+  (o launchers\DETENER.bat)
+
+Carpetas técnicas (solo si desarrollas)
+---------------------------------------
+  launchers\   scripts .bat de usuario
+  docker\      docker-compose.fabric.yml / app.yml
+  config\      connection.json (generado por Fabric)
+  logs\        fabric-network.log y otros
+  packaging\   fuentes/icons de los .exe (salida en packaging\dist)
+  scripts\     scripts internos de arranque
+
+Compose manual:
+  docker compose -f docker/docker-compose.fabric.yml up -d
+  docker compose -f docker/docker-compose.app.yml up -d --build
+
+Más detalles: README.md

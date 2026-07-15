@@ -1,7 +1,7 @@
 # Stack SOLO Hyperledger Fabric (separado de API/frontend)
 # Red: music-royalty-fabric
 # Arranque recomendado: FABRIC-UP.bat
-# Manual: docker compose -f docker-compose.fabric.yml up -d
+# Manual: docker compose -f docker/docker-compose.fabric.yml up -d
 name: music-royalty-fabric
 
 networks:
@@ -22,7 +22,7 @@ services:
       - "7054:7054"
     command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
     volumes:
-      - ./network/organizations/fabric-ca/org1:/etc/hyperledger/fabric-ca-server
+      - ../network/organizations/fabric-ca/org1:/etc/hyperledger/fabric-ca-server
     networks:
       - fabric
 
@@ -54,8 +54,8 @@ services:
     working_dir: /root
     command: orderer
     volumes:
-      - ./network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
-      - ./network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls
+      - ../network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp:/var/hyperledger/orderer/msp
+      - ../network/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/:/var/hyperledger/orderer/tls
       - orderer.example.com:/var/hyperledger/production/orderer
     ports:
       - "7050:7050"
@@ -89,8 +89,8 @@ services:
       - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9444
       - CORE_CHAINCODE_EXECUTETIMEOUT=300s
     volumes:
-      - ./network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp
-      - ./network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls
+      - ../network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/msp:/etc/hyperledger/fabric/msp
+      - ../network/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls:/etc/hyperledger/fabric/tls
       - peer0.org1.example.com:/var/hyperledger/production
       - /var/run/docker.sock:/host/var/run/docker.sock
     working_dir: /root
@@ -126,8 +126,8 @@ services:
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: /bin/bash
     volumes:
-      - ./network:/opt/gopath/src/github.com/hyperledger/fabric/peer
-      - ./chaincode:/opt/gopath/src/github.com/chaincode
+      - ../network:/opt/gopath/src/github.com/hyperledger/fabric/peer
+      - ../chaincode:/opt/gopath/src/github.com/chaincode
       - /var/run/:/host/var/run/
     depends_on:
       - peer0.org1.example.com
