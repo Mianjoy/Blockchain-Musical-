@@ -1,8 +1,8 @@
 @echo off
 :: Arranca solo API + Frontend (con o sin Fabric).
 :: Uso:
-::   call scripts\windows\start-app.bat
 ::   call scripts\windows\start-app.bat simulation
+::   call scripts\windows\start-app.bat fabric
 setlocal EnableDelayedExpansion
 cd /d "%~dp0\..\.."
 set "ROOT=%CD%"
@@ -36,20 +36,21 @@ if not exist "%ROOT%\frontend\node_modules\" (
   popd
 )
 
-:: Liberar puertos
 for /f "tokens=5" %%P in ('netstat -ano ^| findstr ":3000" ^| findstr "LISTENING"') do taskkill /F /PID %%P >nul 2>nul
 for /f "tokens=5" %%P in ('netstat -ano ^| findstr ":3001" ^| findstr "LISTENING"') do taskkill /F /PID %%P >nul 2>nul
 
 if /i "%MODE%"=="simulation" (
   echo [INFO] Modo SIMULACION ^(sin Fabric real^)
   set "ALLOW_SIMULATION=true"
+  set "FABRIC_AS_LOCALHOST=true"
 ) else (
-  echo [INFO] Modo Fabric estricto
+  echo [INFO] Modo FABRIC ^(API host → peer localhost:7051^)
   set "ALLOW_SIMULATION=false"
+  set "FABRIC_AS_LOCALHOST=true"
 )
 
 echo [INFO] Iniciando API...
-start "MusicRoyalty-API" /D "%ROOT%" cmd /k "set ALLOW_SIMULATION=%ALLOW_SIMULATION%&& set CHANNEL_NAME=mychannel&& set CHAINCODE_NAME=music-royalty&& set PORT=3000&& set HOST=0.0.0.0&& node index.js"
+start "MusicRoyalty-API" /D "%ROOT%" cmd /k "set ALLOW_SIMULATION=%ALLOW_SIMULATION%&& set FABRIC_AS_LOCALHOST=%FABRIC_AS_LOCALHOST%&& set CHANNEL_NAME=mychannel&& set CHAINCODE_NAME=music-royalty&& set PORT=3000&& set HOST=0.0.0.0&& node index.js"
 
 timeout /t 5 /nobreak >nul
 
@@ -79,10 +80,11 @@ echo.
 echo Frontend: http://localhost:3001
 echo API:      http://localhost:3000/api
 if /i "%MODE%"=="simulation" (
-  echo Modo:     SIMULACION ^(regalias/contratos en memoria^)
+  echo Modo:     SIMULACION
 ) else (
   echo Modo:     FABRIC
 )
-echo Detener:  DETENER.bat
+echo Detener app+fabric: CERRAR-TODO.bat
+echo Solo Fabric:        FABRIC-DOWN.bat
 echo.
 exit /b 0

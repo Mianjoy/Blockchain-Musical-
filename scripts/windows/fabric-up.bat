@@ -48,9 +48,12 @@ exit /b 1
 
 :do_down
 call :log "[INFO] Deteniendo red Fabric..."
-pushd "%NET%"
+pushd "%ROOT%"
 set "IMAGE_TAG=%FABRIC_VER%"
 set "CA_IMAGE_TAG=%CA_VER%"
+docker compose -f docker-compose.fabric.yml down --volumes --remove-orphans >nul 2>&1
+popd
+pushd "%NET%"
 docker compose -f docker-compose-net.yaml down --volumes --remove-orphans >nul 2>&1
 popd
 for /f "tokens=*" %%i in ('docker ps -aq --filter "name=dev-peer" 2^>nul') do docker rm -f %%i >nul 2>&1
@@ -119,13 +122,22 @@ if not exist "%NET%\channel-artifacts\%CHANNEL%.block" (
 
 mkdir "%NET%\organizations\fabric-ca\org1" 2>nul
 
-call :log "[3/7] Levantando contenedores..."
-pushd "%NET%"
+call :log "[3/7] Levantando contenedores Fabric (docker-compose.fabric.yml)..."
+pushd "%ROOT%"
 set "IMAGE_TAG=%FABRIC_VER%"
 set "CA_IMAGE_TAG=%CA_VER%"
-docker compose -f docker-compose-net.yaml up -d >>"%LOG%" 2>&1
+docker compose -f docker-compose.fabric.yml up -d >>"%LOG%" 2>&1
 set "RC=!ERRORLEVEL!"
 popd
+if not "!RC!"=="0" (
+  call :log "  Fallback a network/docker-compose-net.yaml..."
+  pushd "%NET%"
+  set "IMAGE_TAG=%FABRIC_VER%"
+  set "CA_IMAGE_TAG=%CA_VER%"
+  docker compose -f docker-compose-net.yaml up -d >>"%LOG%" 2>&1
+  set "RC=!ERRORLEVEL!"
+  popd
+)
 if not "!RC!"=="0" (
   call :err "docker compose up fallo (!RC!). Revisa File sharing y fabric-network.log"
   exit /b !RC!

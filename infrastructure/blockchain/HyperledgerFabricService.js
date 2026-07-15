@@ -16,11 +16,19 @@ class HyperledgerFabricService extends IBlockchainService {
     super();
     this.config = {
       walletPath: config.walletPath || path.join(__dirname, '../../../wallet'),
-      connectionProfile: config.connectionProfile || path.join(__dirname, '../../../connection.json'),
+      connectionProfile:
+        config.connectionProfile ||
+        process.env.CONNECTION_PROFILE ||
+        path.join(__dirname, '../../../connection.json'),
       channelName: config.channelName || process.env.CHANNEL_NAME || 'mychannel',
       chaincodeName: config.chaincodeName || process.env.CHAINCODE_NAME || 'music-royalty',
       mspId: config.mspId || 'Org1MSP',
       identity: config.identity || 'appUser',
+      // true = API en host Windows (localhost). false = API en Docker (DNS peer/orderer)
+      asLocalhost:
+        config.asLocalhost !== undefined
+          ? config.asLocalhost
+          : process.env.FABRIC_AS_LOCALHOST !== 'false',
       allowSimulation:
         config.allowSimulation === true ||
         process.env.ALLOW_SIMULATION === 'true' ||
@@ -70,7 +78,10 @@ class HyperledgerFabricService extends IBlockchainService {
       await this.gateway.connect(ccp, {
         wallet,
         identity: this.config.identity,
-        discovery: { enabled: true, asLocalhost: true }
+        discovery: {
+          enabled: true,
+          asLocalhost: this.config.asLocalhost !== false
+        }
       });
 
       this.network = await this.gateway.getNetwork(this.config.channelName);
@@ -80,6 +91,8 @@ class HyperledgerFabricService extends IBlockchainService {
       console.log('Conexión a Hyperledger Fabric establecida correctamente');
       console.log(`  Canal: ${this.config.channelName}`);
       console.log(`  Chaincode: ${this.config.chaincodeName}`);
+      console.log(`  Perfil: ${connectionPath}`);
+      console.log(`  asLocalhost: ${this.config.asLocalhost !== false}`);
       return true;
     } catch (error) {
       console.error('Error inicializando Hyperledger Fabric:', error.message);

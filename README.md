@@ -19,52 +19,38 @@ Objetivo: **descargar el proyecto y arrancar todo** (dependencias + Fabric + API
 > También puedes clonar:  
 > `git clone https://github.com/Mianjoy/Blockchain-Musical-.git`
 
-### Paso 2 — Arrancar (único archivo)
+### Paso 2 — Arrancar (separado: Fabric ↔ App)
 
-Abre la carpeta del proyecto y haz **doble clic** en:
+Fabric va en **contenedores Docker**. La App (API + frontend) es **independiente** y se conecta si Fabric está arriba.
 
 ```text
-ARRANCAR.bat
+1) FABRIC-UP.bat     → solo blockchain (Docker)
+2) APP-UP.bat        → API + UI (se conecta a Fabric si está en :7051)
 ```
+
+Opciones rápidas:
 
 | Archivo | Qué hace |
 |---------|----------|
-| **`ARRANCAR.bat`** | Intenta Fabric real (Windows nativo); si falla → **DEMO/simulación** |
-| **`ARRANCAR-FABRIC.bat`** | Solo Fabric real (falla con diagnóstico si no puede; sin fallback) |
-| **`ARRANCAR-DEMO.bat`** | Solo simulación (Node.js; no necesita Docker) |
-| **`REPARAR-FABRIC.bat`** | Limpia y regenera la red Fabric 3.1.5 |
-| **`CERRAR-TODO.bat`** / **`DETENER.bat`** | Apaga todo (API, UI, Fabric) aunque no haya nada corriendo |
-| `run-system.bat` | Alias de `ARRANCAR.bat` |
-| `crear-acceso-directo.bat` | Acceso directo en el Escritorio |
+| **`FABRIC-UP.bat`** | Solo Hyperledger Fabric 3.1.5 (contenedores) |
+| **`FABRIC-DOWN.bat`** | Solo apaga Fabric |
+| **`APP-UP.bat`** | Solo API+UI; conecta a Fabric o usa simulación |
+| **`ARRANCAR-DEMO.bat`** | Solo UI/API en simulación (sin Docker) |
+| **`ARRANCAR.bat`** | Menú: Demo / Fabric / Fabric+App |
+| **`CERRAR-TODO.bat`** | Apaga API, UI y Fabric |
 
-### Fabric real en Windows (recomendado)
-
-El stack soportado es **Hyperledger Fabric 3.1.5 + CA 1.5.21**, orquestado con **CMD + Docker** (`scripts\windows\fabric-up.bat`). **No requiere Git Bash.**
+Compose separados:
 
 ```text
-ARRANCAR-FABRIC.bat
+docker-compose.fabric.yml   # red music-royalty-fabric
+docker-compose.app.yml      # API unida a esa red
 ```
 
-O, si falló un intento anterior:
+Comprobar conexión:
 
 ```text
-REPARAR-FABRIC.bat
-ARRANCAR-FABRIC.bat
-```
-
-`ARRANCAR.bat` / `ARRANCAR-FABRIC.bat` hacen:
-
-1. Refresca el PATH (Node / Docker)
-2. `npm install` backend y frontend
-3. Levanta Fabric con **`fabric-up.bat`** (crypto nativo, compose, canal, chaincode, wallet)
-4. Arranca API en modo Fabric + frontend
-5. Abre http://localhost:3001
-6. Logs: **`arranque.log`** y **`fabric-network.log`**
-
-Si solo quieres **probar la app ya** (sin Docker/Fabric):
-
-```text
-ARRANCAR-DEMO.bat
+http://localhost:3000/health
+→ fabric.connected: true | simulation: true
 ```
 
 ### Paso 3 — Usar el sistema

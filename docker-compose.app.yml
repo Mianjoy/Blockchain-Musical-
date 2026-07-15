@@ -1,21 +1,26 @@
-version: '3.8'
-
-# OBSOLETO como compose unico.
-# Usa:
-#   docker-compose.fabric.yml  → solo Fabric
-#   docker-compose.app.yml     → solo API (conectada a red music-royalty-fabric)
-# En Windows preferir: FABRIC-UP.bat + APP-UP.bat
+# =============================================================================
+# Stack SOLO aplicación (API Express). El frontend suele ir por Vite en el host.
+# Se conecta a Fabric en la red externa music-royalty-fabric (FABRIC-UP.bat).
+#
+# Uso típico Windows (host):
+#   1) FABRIC-UP.bat
+#   2) APP-UP.bat
+#
+# Uso Docker de la API:
+#   docker compose -f docker-compose.app.yml up -d --build
+# =============================================================================
+name: music-royalty-app
 
 services:
-  app:
+  api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: music-royalty-app
+    container_name: music-royalty-api
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=development
+      - NODE_ENV=production
       - PORT=3000
       - HOST=0.0.0.0
       - CHANNEL_NAME=mychannel
@@ -27,6 +32,8 @@ services:
       - ./wallet:/app/wallet
       - ./connection.json:/app/connection.json:ro
       - ./connection-docker.json:/app/connection-docker.json:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - music-royalty-app
       - music-royalty-fabric

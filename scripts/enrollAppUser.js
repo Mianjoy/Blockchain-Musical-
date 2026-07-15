@@ -52,12 +52,11 @@ function findPrivateKey(mspPath) {
   return path.join(keystore, files[0]);
 }
 
-function buildConnectionProfile() {
+function buildConnectionProfile({ peerHost, ordererHost, caHost }) {
   const peerTlsPem = readCertFile(PEER_TLS);
   const ordererTlsPem = readCertFile(ORDERER_TLS);
 
   let caTlsPem = peerTlsPem;
-  // Si la CA ya generó su certificado TLS, úsalo
   const possibleCaCerts = [
     path.join(CA_TLS_DIR, 'ca-cert.pem'),
     path.join(CA_TLS_DIR, 'tls-cert.pem')
@@ -89,7 +88,7 @@ function buildConnectionProfile() {
     },
     peers: {
       'peer0.org1.example.com': {
-        url: 'grpcs://localhost:7051',
+        url: `grpcs://${peerHost}:7051`,
         tlsCACerts: { pem: peerTlsPem },
         grpcOptions: {
           'ssl-target-name-override': 'peer0.org1.example.com',
@@ -99,7 +98,7 @@ function buildConnectionProfile() {
     },
     orderers: {
       'orderer.example.com': {
-        url: 'grpcs://localhost:7050',
+        url: `grpcs://${ordererHost}:7050`,
         tlsCACerts: { pem: ordererTlsPem },
         grpcOptions: {
           'ssl-target-name-override': 'orderer.example.com',
@@ -109,7 +108,7 @@ function buildConnectionProfile() {
     },
     certificateAuthorities: {
       'ca.org1.example.com': {
-        url: 'https://localhost:7054',
+        url: `https://${caHost}:7054`,
         caName: 'ca-org1',
         tlsCACerts: { pem: caTlsPem },
         httpOptions: { verify: false }
@@ -154,20 +153,34 @@ async function main() {
   console.log('=== Generando connection.json y wallet ===');
 
   if (!fs.existsSync(PEER_TLS) || !fs.existsSync(ORDERER_TLS)) {
-    throw new Error('Certificados TLS no encontrados. Genera la red primero (network.sh up)');
+    throw new Error('Certificados TLS no encontrados. Genera la red primero (FABRIC-UP.bat)');
   }
 
-  const connection = buildConnectionProfile();
+  // Perfil para API en el HOST (Windows) → localhost
+  const connectionHost = buildConnectionProfile({
+    peerHost: 'localhost',
+    ordererHost: 'localhost',
+    caHost: 'localhost'
+  });
   const connectionPath = path.join(PROJECT_ROOT, 'connection.json');
-  fs.writeFileSync(connectionPath, JSON.stringify(connection, null, 2));
-  console.log(`[OK] connection.json escrito en ${connectionPath}`);
+  fs.writeFileSync(connectionPath, JSON.stringify(connectionHost, null, 2));
+  console.log(`[OK] connection.json (host/localhost) → ${connectionPath}`);
 
-  // Copia también al perfil de red
+  // Perfil para API en Docker dentro de la red Fabric → DNS de contenedores
+  const connectionDocker = buildConnectionProfile({
+    peerHost: 'peer0.org1.example.com',
+    ordererHost: 'orderer.example.com',
+    caHost: 'ca_org1'
+  });
+  const connectionDockerPath = path.join(PROJECT_ROOT, 'connection-docker.json');
+  fs.writeFileSync(connectionDockerPath, JSON.stringify(connectionDocker, null, 2));
+  console.log(`[OK] connection-docker.json (red Docker) → ${connectionDockerPath}`);
+
   const profileDir = path.join(NETWORK_ROOT, 'connection-profile');
   fs.mkdirSync(profileDir, { recursive: true });
   fs.writeFileSync(
     path.join(profileDir, 'connection-org1.json'),
-    JSON.stringify(connection, null, 2)
+    JSON.stringify(connectionHost, null, 2)
   );
 
   await importAppUser();
