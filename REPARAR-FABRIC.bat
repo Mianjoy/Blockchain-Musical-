@@ -6,25 +6,22 @@ cd /d "%~dp0"
 
 echo.
 echo ==============================================================
-echo  REPARAR RED HYPERLEDGER FABRIC
+echo  REPARAR RED HYPERLEDGER FABRIC ^(Windows nativo^)
 echo ==============================================================
 echo.
-echo  Esto limpia la red y artefactos y vuelve a generarlos.
-echo  Usa esto si viste error 125, API 1.25 too old, o fallo Fabric.
+echo  Limpia red + artefactos y vuelve a generarlos con fabric-up.bat
+echo  ^(CMD + Docker, sin Git Bash^).
 echo.
-echo  Nota: el proyecto usa Fabric 2.5.15 (compatible con Docker moderno).
-echo  Si el error fue "client version 1.25 is too old", ejecuta antes:
-echo     FIX-DOCKER-API.bat
-echo  y Apply ^& Restart en Docker Desktop.
+echo  Fabric 2.5.15 / CA 1.5.15
+echo  Si el error fue "client version 1.25 is too old":
+echo     1^) FIX-DOCKER-API.bat
+echo     2^) Apply ^& Restart en Docker Desktop
+echo     3^) Este script de nuevo
 echo.
 
 call "%~dp0scripts\windows\refresh-path.bat"
-call "%~dp0scripts\windows\find-bash.bat"
-if not defined MR_BASH (
-  echo [ERROR] Git Bash no encontrado.
-  pause
-  exit /b 1
-)
+if exist "%ProgramFiles%\Docker\Docker\resources\bin\docker.exe" set "PATH=%ProgramFiles%\Docker\Docker\resources\bin;%PATH%"
+if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
 
 where docker >nul 2>nul
 if errorlevel 1 (
@@ -40,11 +37,18 @@ if errorlevel 1 (
   exit /b 1
 )
 
+where node >nul 2>nul
+if errorlevel 1 (
+  echo [ERROR] Node.js no encontrado.
+  pause
+  exit /b 1
+)
+
 echo [1/2] Limpiando red y artefactos...
-call "%~dp0scripts\windows\run-bash.bat" network/scripts/network.sh clean
+call "%~dp0scripts\windows\fabric-up.bat" clean
 echo.
 echo [2/2] Regenerando crypto + levantando red...
-call "%~dp0scripts\windows\run-bash.bat" network/scripts/network.sh up
+call "%~dp0scripts\windows\fabric-up.bat" up
 if errorlevel 1 (
   echo.
   echo [ERROR] Sigue fallando. Revisa fabric-network.log
@@ -54,13 +58,16 @@ if errorlevel 1 (
   echo  - Marca la unidad del proyecto ^(C: o D:^)
   echo  - Apply ^& Restart
   echo.
+  echo Mientras tanto puedes probar la app con ARRANCAR-DEMO.bat
+  echo.
   pause
   exit /b 1
 )
 
 echo.
-echo [OK] Red Fabric reparada. Ahora puedes ejecutar start-system.bat
-echo      o ARRANCAR.bat otra vez.
+echo [OK] Red Fabric reparada.
+echo      Ahora: ARRANCAR-FABRIC.bat  ^(solo app en modo Fabric^)
+echo      o:     ARRANCAR.bat
 echo.
 pause
 endlocal

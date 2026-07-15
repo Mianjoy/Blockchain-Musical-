@@ -16,17 +16,13 @@ for /f "tokens=5" %%P in ('netstat -ano ^| findstr ":3001" ^| findstr "LISTENING
 
 echo Deteniendo red Hyperledger Fabric...
 call "%ROOT%\scripts\windows\refresh-path.bat"
-call "%ROOT%\scripts\windows\find-bash.bat"
+if exist "%ProgramFiles%\Docker\Docker\resources\bin\docker.exe" set "PATH=%ProgramFiles%\Docker\Docker\resources\bin;%PATH%"
 
-if defined MR_BASH (
-  call "%ROOT%\scripts\windows\run-bash.bat" network/scripts/network.sh down
+where docker >nul 2>nul
+if not errorlevel 1 (
+  call "%ROOT%\scripts\windows\fabric-up.bat" down
 ) else (
-  where docker >nul 2>nul
-  if not errorlevel 1 (
-    docker compose -f "%ROOT%\network\docker-compose-net.yaml" down --volumes --remove-orphans
-  ) else (
-    echo [AVISO] Ni Git Bash ni Docker disponibles para apagar la red.
-  )
+  echo [AVISO] Docker no disponible para apagar la red Fabric.
 )
 
 echo.

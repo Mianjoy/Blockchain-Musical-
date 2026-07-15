@@ -27,30 +27,44 @@ Abre la carpeta del proyecto y haz **doble clic** en:
 ARRANCAR.bat
 ```
 
-Si solo quieres **probar la app ya** (sin pelearte con Fabric):
+| Archivo | Qué hace |
+|---------|----------|
+| **`ARRANCAR.bat`** | Intenta Fabric real (Windows nativo); si falla → **DEMO/simulación** |
+| **`ARRANCAR-FABRIC.bat`** | Solo Fabric real (falla con diagnóstico si no puede; sin fallback) |
+| **`ARRANCAR-DEMO.bat`** | Solo simulación (Node.js; no necesita Docker) |
+| **`REPARAR-FABRIC.bat`** | Limpia y regenera la red Fabric 2.5.15 |
+| `run-system.bat` | Alias de `ARRANCAR.bat` |
+| `crear-acceso-directo.bat` | Acceso directo en el Escritorio |
+
+### Fabric real en Windows (recomendado)
+
+El stack soportado es **Hyperledger Fabric 2.5.15 + CA 1.5.15**, orquestado con **CMD + Docker** (`scripts\windows\fabric-up.bat`). **No requiere Git Bash.**
+
+```text
+ARRANCAR-FABRIC.bat
+```
+
+O, si falló un intento anterior:
+
+```text
+REPARAR-FABRIC.bat
+ARRANCAR-FABRIC.bat
+```
+
+`ARRANCAR.bat` / `ARRANCAR-FABRIC.bat` hacen:
+
+1. Refresca el PATH (Node / Docker)
+2. `npm install` backend y frontend
+3. Levanta Fabric con **`fabric-up.bat`** (crypto nativo, compose, canal, chaincode, wallet)
+4. Arranca API en modo Fabric + frontend
+5. Abre http://localhost:3001
+6. Logs: **`arranque.log`** y **`fabric-network.log`**
+
+Si solo quieres **probar la app ya** (sin Docker/Fabric):
 
 ```text
 ARRANCAR-DEMO.bat
 ```
-
-| Archivo | Qué hace |
-|---------|----------|
-| **`ARRANCAR.bat`** | Intenta Fabric; si falla, arranca **DEMO/simulación** automáticamente |
-| **`ARRANCAR-DEMO.bat`** | Solo simulación (Node.js; no necesita Docker/Fabric) |
-| `run-system.bat` | Alias de `ARRANCAR.bat` |
-| `crear-acceso-directo.bat` | Crea un acceso directo en el Escritorio |
-
-`ARRANCAR.bat` hace automáticamente:
-
-1. Refresca el PATH de Windows (Node / Git / Docker)
-2. Revisa e instala **Node.js**, **Git Bash** y **Docker Desktop** (con `winget` si está disponible)
-3. Ejecuta `npm install` (backend, frontend y chaincode)
-4. Levanta la red **Hyperledger Fabric** vía Git Bash
-5. Despliega el chaincode `music-royalty`
-6. Genera `connection.json` + wallet `appUser`
-7. Arranca la **API** y el **frontend** en ventanas separadas
-8. Abre el navegador en http://localhost:3001
-9. Escribe un registro en **`arranque.log`**
 
 ### Paso 3 — Usar el sistema
 
@@ -128,9 +142,9 @@ Puedes crear un `.exe` “cara” con herramientas tipo *Bat to Exe* apuntando a
 
 | Herramienta | Uso |
 |-------------|-----|
-| **Docker Desktop** | Red Fabric |
+| **Docker Desktop** | Red Fabric 2.5.15 (obligatorio para Fabric real) |
 | **Node.js 18+** | API, frontend y wallet |
-| **Git Bash** o **WSL** | Scripts de la red Fabric |
+| Git Bash | Opcional (solo scripts `.sh` legacy / Mac-Linux) |
 
 ---
 
@@ -138,12 +152,13 @@ Puedes crear un `.exe` “cara” con herramientas tipo *Bat to Exe* apuntando a
 
 | Archivo | Uso |
 |---------|-----|
-| `ARRANCAR.bat` | **Todo en uno** (instalar + arrancar) |
+| `ARRANCAR.bat` | Fabric nativo + fallback DEMO |
+| `ARRANCAR-FABRIC.bat` | Solo Fabric real (Windows nativo) |
+| `ARRANCAR-DEMO.bat` | Solo simulación |
+| `REPARAR-FABRIC.bat` | Reset limpio de la red Fabric |
 | `DETENER.bat` | Apagar API, frontend y Fabric |
+| `FIX-DOCKER-API.bat` | Ajuste Docker Desktop API antigua |
 | `install-dependencies.bat` | Solo deps (con preguntas) |
-| `install-dependencies-auto.bat` | Solo deps (sin preguntas; lo usa `ARRANCAR.bat`) |
-| `start-system.bat` | Solo arrancar si ya tienes deps |
-| `stop-system.bat` | Igual que `DETENER.bat` |
 | `crear-acceso-directo.bat` | Acceso directo en el Escritorio |
 
 Red Fabric: [network/README.md](network/README.md)
@@ -342,23 +357,23 @@ Crear canción (+ %) → Contrato en Fabric → Notificación de lanzamiento
 
 ### Error Fabric código **125**
 
-Es un error de **Docker** (no de Node): Git Bash en Windows a menudo rompe las rutas `-v` al montar carpetas.
+Docker no pudo montar carpetas del proyecto (File sharing / rutas).
 
-El proyecto ya fuerza `MSYS_NO_PATHCONV` y convierte rutas con `cygpath`. Si aún falla:
+El arranque Windows ya usa **`fabric-up.bat`** (CMD + Docker, sin Git Bash). Si aún falla:
 
 1. Docker Desktop → **Settings → Resources → File sharing**
 2. Marca la unidad del proyecto (`C:` o `D:`) → **Apply & Restart**
 3. Ejecuta **`REPARAR-FABRIC.bat`**
-4. Luego **`ARRANCAR.bat`**
+4. Luego **`ARRANCAR-FABRIC.bat`**
 
-Detalle del fallo: `fabric-network.log`
+Detalle: `fabric-network.log`
 
 ### Error: `timed out waiting for txid on all peers`
 
-Ocurre en `approveformyorg` / `commit` del chaincode (el peer no confirma la tx a tiempo).
+El approve/commit ya trabaja **sin `waitForEvent`** y sondea `checkcommitreadiness` (más estable en Docker Desktop). Si aún falla:
 
-1. Prueba **`REPARAR-FABRIC.bat`** y luego **`ARRANCAR.bat`**
-2. O usa **`ARRANCAR-DEMO.bat`** / deja que `ARRANCAR.bat` caiga a simulación (la app queda usable)
+1. **`REPARAR-FABRIC.bat`** → **`ARRANCAR-FABRIC.bat`**
+2. O **`ARRANCAR-DEMO.bat`** (app usable en simulación)
 
 ### Error: `client version 1.25 is too old` / `Minimum supported API version is 1.40`
 

@@ -13,11 +13,14 @@ call :log " MUSIC ROYALTY - ARRANQUE WINDOWS"
 call :log "=============================================================="
 call :log "Carpeta: %ROOT%"
 echo.
-echo  1^) Prepara Node / Git / Docker
-echo  2^) Intenta Hyperledger Fabric
+echo  1^) Prepara Node / Docker
+echo  2^) Intenta Hyperledger Fabric ^(ruta Windows nativa, sin Git Bash^)
 echo  3^) Si Fabric falla, arranca DEMO en simulacion ^(siempre usable^)
 echo.
-echo  Log: arranque.log
+echo  Logs: arranque.log / fabric-network.log
+echo.
+echo  Solo Fabric real:  ARRANCAR-FABRIC.bat
+echo  Solo simulacion:   ARRANCAR-DEMO.bat
 echo.
 
 call "%ROOT%\scripts\windows\refresh-path.bat"
@@ -51,13 +54,8 @@ if not exist "%ROOT%\frontend\node_modules\" (
   if not "!E!"=="0" call :fatal "npm install frontend fallo"
 )
 
-:: ---- Intentar Fabric si Docker+Git Bash estan OK ----
+:: ---- Docker ----
 set "TRY_FABRIC=1"
-call "%ROOT%\scripts\windows\find-bash.bat"
-if not defined MR_BASH (
-  call :log "[AVISO] Sin Git Bash: se usara modo DEMO/simulacion"
-  set "TRY_FABRIC=0"
-)
 where docker >nul 2>nul
 if errorlevel 1 (
   if exist "%ProgramFiles%\Docker\Docker\resources\bin\docker.exe" set "PATH=%ProgramFiles%\Docker\Docker\resources\bin;%PATH%"
@@ -89,15 +87,15 @@ if errorlevel 1 (
 :after_docker
 
 if "!TRY_FABRIC!"=="1" (
-  call :log "[FABRIC] Levantando red Hyperledger Fabric..."
-  call "%ROOT%\scripts\windows\run-bash.bat" network/scripts/network.sh up
+  call :log "[FABRIC] Levantando Hyperledger Fabric 2.5.15 ^(Windows nativo^)..."
+  call "%ROOT%\scripts\windows\fabric-up.bat" up
   if errorlevel 1 (
-    call :log "[AVISO] Fabric fallo. Arrancando DEMO en simulacion para que puedas probar la app."
+    call :log "[AVISO] Fabric fallo. Arrancando DEMO en simulacion."
     echo.
     echo ==============================================================
-    echo  Fabric no completo el despliegue del chaincode.
-    echo  Se inicia el sistema en MODO DEMO / SIMULACION.
-    echo  ^(Catalogo, compras, analytics y notificaciones funcionan^)
+    echo  Fabric no completo el despliegue.
+    echo  Se inicia MODO DEMO / SIMULACION para que puedas probar la app.
+    echo  Para insistir en Fabric real: REPARAR-FABRIC.bat + ARRANCAR-FABRIC.bat
     echo ==============================================================
     echo.
     call "%ROOT%\scripts\windows\start-app.bat" simulation
@@ -120,6 +118,7 @@ if not "!APP_RC!"=="0" (
 )
 echo.
 echo Sistema listo. Abre http://localhost:3001
+echo Health: http://localhost:3000/health
 echo Para detener: DETENER.bat
 echo.
 pause

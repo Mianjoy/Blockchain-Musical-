@@ -6,8 +6,8 @@ import CreateSongPage from './pages/CreateSongPage';
 import SongDetailPage from './pages/SongDetailPage';
 import PurchasesPage from './pages/PurchasesPage';
 import AnalyticsPage from './pages/AnalyticsPage';
-import { LanguageProvider } from './contexts/LanguageContext';
-import { NotificationProvider } from './contexts/NotificationContext';
+import { LanguageProvider } from './contexts/LanguageContext.jsx';
+import { NotificationProvider } from './contexts/NotificationContext.jsx';
 import './styles/App.css';
 
 function App() {

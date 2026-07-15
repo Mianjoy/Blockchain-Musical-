@@ -10,12 +10,13 @@ PEER_TLS_ROOTCERT="/opt/gopath/src/github.com/hyperledger/fabric/peer/organizati
 CC_SRC_IN_CLI="/opt/gopath/src/github.com/chaincode/music-royalty"
 CC_LABEL="${CC_NAME}_${CC_VERSION}"
 CC_PACKAGE="${CC_NAME}.tar.gz"
-EVENT_TIMEOUT="${CC_EVENT_TIMEOUT:-120s}"
+EVENT_TIMEOUT="${CC_EVENT_TIMEOUT:-180s}"
+POLICY="OR('Org1MSP.peer')"
 
 function waitChannelReady() {
   printInfo "Esperando que el canal ${CHANNEL_NAME} entregue bloques..."
   local i height
-  for i in $(seq 1 30); do
+  for i in $(seq 1 40); do
     height="$(docker exec fabric-cli peer channel getinfo -c "${CHANNEL_NAME}" 2>/dev/null | sed -n 's/.*height: *\([0-9]*\).*/\1/p' | head -n1 || true)"
     if [[ -n "${height}" && "${height}" -ge 1 ]]; then
       printSuccess "Canal listo (height=${height})"
@@ -33,11 +34,24 @@ function getFullPackageId() {
     | head -n1
 }
 
+function isCommitReady() {
+  docker exec fabric-cli peer lifecycle chaincode checkcommitreadiness \
+    --channelID "${CHANNEL_NAME}" \
+    --name "${CC_NAME}" \
+    --version "${CC_VERSION}" \
+    --sequence "${CC_SEQUENCE}" \
+    --tls \
+    --cafile "${ORDERER_CA_CONTAINER}" \
+    --signature-policy "${POLICY}" \
+    --output json 2>/dev/null | grep -q '"true"'
+}
+
 function approveWithRetry() {
   local pkg_id="$1"
   local attempt rc
-  for attempt in 1 2 3; do
-    printInfo "Aprobando chaincode para Org1 (intento ${attempt}/3, timeout ${EVENT_TIMEOUT})..."
+  for attempt in 1 2 3 4 5; do
+    printInfo "Aprobando chaincode para Org1 (intento ${attempt}/5)..."
+    # Sin --waitForEvent: mas fiable en Docker Desktop Windows (evita timeout txid)
     set +e
     docker exec fabric-cli peer lifecycle chaincode approveformyorg \
       -o orderer.example.com:7050 \
@@ -48,38 +62,53 @@ function approveWithRetry() {
       --sequence "${CC_SEQUENCE}" \
       --tls \
       --cafile "${ORDERER_CA_CONTAINER}" \
-      --signature-policy "OR('Org1MSP.peer')" \
-      --waitForEvent \
-      --waitForEventTimeout "${EVENT_TIMEOUT}"
+      --signature-policy "${POLICY}"
     rc=$?
     set -e
-    if [[ "${rc}" -eq 0 ]]; then
-      printSuccess "approveformyorg OK"
+    sleep 6
+    if isCommitReady; then
+      printSuccess "approveformyorg OK (commit readiness = true)"
       return 0
     fi
-    printWarn "approveformyorg fallo (codigo ${rc}). Reintentando en 8s..."
-    sleep 8
+    printWarn "Aun no ready (approve rc=${rc}). Reintentando en 10s..."
+    sleep 10
   done
   return 1
 }
 
 printInfo "Instalando dependencias del chaincode (npm)..."
-CC_DOCKER_PATH="$(toDockerPath "${CC_SRC_PATH}")"
-printInfo "Chaincode mount: ${CC_DOCKER_PATH}"
-set +e
-MSYS_NO_PATHCONV=1 docker run --rm \
-  -v "${CC_DOCKER_PATH}:/chaincode" \
-  -w /chaincode \
-  node:18-alpine \
-  sh -c "npm install --omit=dev"
-CC_NPM_RC=$?
-set -e
-if [[ "${CC_NPM_RC}" -ne 0 ]]; then
-  printError "npm install del chaincode fallo (codigo ${CC_NPM_RC})"
-  if [[ "${CC_NPM_RC}" == "125" ]]; then
-    printError "Error 125: Docker no pudo montar ${CC_DOCKER_PATH}"
+if [[ -d "${CC_SRC_PATH}/node_modules" ]]; then
+  printInfo "node_modules ya existe; se omite npm install"
+else
+  # Preferir npm del host (Windows nativo) para evitar montajes fragiles
+  if command -v npm >/dev/null 2>&1; then
+    printInfo "npm install en host: ${CC_SRC_PATH}"
+    set +e
+    (cd "${CC_SRC_PATH}" && npm install --omit=dev)
+    CC_NPM_RC=$?
+    set -e
+  else
+    CC_NPM_RC=1
   fi
-  exit "${CC_NPM_RC}"
+  if [[ "${CC_NPM_RC}" -ne 0 ]]; then
+    CC_DOCKER_PATH="$(toDockerPath "${CC_SRC_PATH}")"
+    printInfo "npm via Docker. Mount: ${CC_DOCKER_PATH}"
+    set +e
+    MSYS_NO_PATHCONV=1 docker run --rm \
+      -v "${CC_DOCKER_PATH}:/chaincode" \
+      -w /chaincode \
+      node:18-alpine \
+      sh -c "npm install --omit=dev"
+    CC_NPM_RC=$?
+    set -e
+  fi
+  if [[ "${CC_NPM_RC}" -ne 0 ]]; then
+    printError "npm install del chaincode fallo (codigo ${CC_NPM_RC})"
+    if [[ "${CC_NPM_RC}" == "125" ]]; then
+      printError "Error 125: Docker no pudo montar el chaincode. Usa File sharing o npm en el host."
+    fi
+    exit "${CC_NPM_RC}"
+  fi
 fi
 
 waitChannelReady
@@ -111,9 +140,8 @@ fi
 printInfo "Package ID: ${FULL_PACKAGE_ID}"
 
 if ! approveWithRetry "${FULL_PACKAGE_ID}"; then
-  printError "No se pudo aprobar el chaincode (timeout txid)."
-  printError "Causa tipica: el peer no recibe bloques del orderer a tiempo."
-  printError "Prueba REPARAR-FABRIC.bat o usa ARRANCAR-DEMO.bat (simulacion)."
+  printError "No se pudo aprobar el chaincode."
+  printError "Prueba REPARAR-FABRIC.bat o ARRANCAR-FABRIC.bat (ruta Windows nativa)."
   docker logs orderer.example.com 2>&1 | tail -n 30 || true
   docker logs peer0.org1.example.com 2>&1 | tail -n 30 || true
   exit 1
@@ -127,7 +155,7 @@ docker exec fabric-cli peer lifecycle chaincode checkcommitreadiness \
   --sequence "${CC_SEQUENCE}" \
   --tls \
   --cafile "${ORDERER_CA_CONTAINER}" \
-  --signature-policy "OR('Org1MSP.peer')" \
+  --signature-policy "${POLICY}" \
   --output json
 
 printInfo "Haciendo commit del chaincode..."
@@ -142,11 +170,28 @@ docker exec fabric-cli peer lifecycle chaincode commit \
   --cafile "${ORDERER_CA_CONTAINER}" \
   --peerAddresses peer0.org1.example.com:7051 \
   --tlsRootCertFiles "${PEER_TLS_ROOTCERT}" \
-  --signature-policy "OR('Org1MSP.peer')" \
-  --waitForEvent \
-  --waitForEventTimeout "${EVENT_TIMEOUT}"
+  --signature-policy "${POLICY}"
 COMMIT_RC=$?
 set -e
+if [[ "${COMMIT_RC}" -ne 0 ]]; then
+  printWarn "commit sin wait fallo; reintento con waitForEvent ${EVENT_TIMEOUT}..."
+  set +e
+  docker exec fabric-cli peer lifecycle chaincode commit \
+    -o orderer.example.com:7050 \
+    --channelID "${CHANNEL_NAME}" \
+    --name "${CC_NAME}" \
+    --version "${CC_VERSION}" \
+    --sequence "${CC_SEQUENCE}" \
+    --tls \
+    --cafile "${ORDERER_CA_CONTAINER}" \
+    --peerAddresses peer0.org1.example.com:7051 \
+    --tlsRootCertFiles "${PEER_TLS_ROOTCERT}" \
+    --signature-policy "${POLICY}" \
+    --waitForEvent \
+    --waitForEventTimeout "${EVENT_TIMEOUT}"
+  COMMIT_RC=$?
+  set -e
+fi
 if [[ "${COMMIT_RC}" -ne 0 ]]; then
   printError "commit del chaincode fallo (codigo ${COMMIT_RC})"
   exit "${COMMIT_RC}"
@@ -167,9 +212,7 @@ docker exec fabric-cli peer chaincode invoke \
   -n "${CC_NAME}" \
   --peerAddresses peer0.org1.example.com:7051 \
   --tlsRootCertFiles "${PEER_TLS_ROOTCERT}" \
-  -c '{"function":"InitLedger","Args":[]}' \
-  --waitForEvent \
-  --waitForEventTimeout "${EVENT_TIMEOUT}"
+  -c '{"function":"InitLedger","Args":[]}'
 INVOKE_RC=$?
 set -e
 if [[ "${INVOKE_RC}" -ne 0 ]]; then
