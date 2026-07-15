@@ -1,5 +1,5 @@
 {
-  "_comment": "Este archivo se genera automáticamente con: node scripts/enrollAppUser.js (tras network.sh up). No editar a mano salvo para entornos custom.",
+  "_comment": "Plantilla. El perfil real se genera con FABRIC-UP.bat / node scripts/enrollAppUser.js (incluye PEMs embebidos). No uses esta plantilla sola en producción local sin enroll.",
   "name": "music-royalty-network",
   "version": "1.0.0",
   "client": {

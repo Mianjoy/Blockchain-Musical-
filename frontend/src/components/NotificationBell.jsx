@@ -1,10 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNotifications } from '../contexts/NotificationContext';
+import { formatNotification } from '../utils/formatNotification';
 import '../styles/NotificationBell.css';
 
 const NotificationBell = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const {
     items,
     unread,
@@ -24,7 +25,9 @@ const NotificationBell = () => {
         aria-label={t('notifications.title')}
         onClick={() => setPanelOpen(!panelOpen)}
       >
-        <span className="notif-bell-icon" aria-hidden>🔔</span>
+        <span className="notif-bell-icon" aria-hidden>
+          🔔
+        </span>
         {unread > 0 && <span className="notif-badge">{unread > 9 ? '9+' : unread}</span>}
       </button>
 
@@ -50,21 +53,26 @@ const NotificationBell = () => {
             {items.length === 0 ? (
               <p className="notif-empty">{t('notifications.empty')}</p>
             ) : (
-              items.slice(0, 20).map((n) => (
-                <button
-                  type="button"
-                  key={n.id}
-                  className={`notif-item ${n.leida ? '' : 'unread'}`}
-                  onClick={() => markRead(n.id)}
-                >
-                  <span className={`notif-type notif-type-${n.tipo}`}>
-                    {n.tipo === 'lanzamiento' ? t('notifications.type.release') : t('notifications.type.sale')}
-                  </span>
-                  <strong>{n.titulo}</strong>
-                  <p>{n.mensaje}</p>
-                  <time>{new Date(n.fecha).toLocaleString()}</time>
-                </button>
-              ))
+              items.slice(0, 20).map((n) => {
+                const { title, message } = formatNotification(n, t);
+                return (
+                  <button
+                    type="button"
+                    key={n.id}
+                    className={`notif-item ${n.leida ? '' : 'unread'}`}
+                    onClick={() => markRead(n.id)}
+                  >
+                    <span className={`notif-type notif-type-${n.tipo}`}>
+                      {n.tipo === 'lanzamiento'
+                        ? t('notifications.type.release')
+                        : t('notifications.type.sale')}
+                    </span>
+                    <strong>{title}</strong>
+                    <p>{message}</p>
+                    <time>{new Date(n.fecha).toLocaleString(i18n.language)}</time>
+                  </button>
+                );
+              })
             )}
           </div>
         </div>

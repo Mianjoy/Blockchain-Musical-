@@ -11,6 +11,8 @@ set "ROOT=%CD%"
 set "NET=%ROOT%\network"
 set "CC=%ROOT%\chaincode\music-royalty"
 set "LOG=%ROOT%\fabric-network.log"
+set "WFLOG=%ROOT%\logs\fabric-workflow.log"
+if not exist "%ROOT%\logs" mkdir "%ROOT%\logs" 2>nul
 set "FABRIC_VER=2.5.16"
 set "CA_VER=1.5.21"
 set "CHANNEL=mychannel"
@@ -453,9 +455,15 @@ exit /b 0
 :log
 echo %~1
 >>"%LOG%" echo %date% %time% %~1
+if defined WFLOG (
+  >>"%WFLOG%" echo [%date% %time%] EVENTO  [RED_FABRIC]  %~1
+)
 exit /b 0
 
 :err
 echo [ERROR] %~1
 >>"%LOG%" echo %date% %time% [ERROR] %~1
+if defined WFLOG (
+  >>"%WFLOG%" echo [%date% %time%] EVENTO  [RED_FABRIC]  ERROR %~1
+)
 exit /b 1

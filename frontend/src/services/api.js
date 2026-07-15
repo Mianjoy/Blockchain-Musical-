@@ -16,7 +16,8 @@ function mapCancionFromApi(c) {
     participants: (c.participantes || c.participants || []).map((p) => ({
       name: p.nombre || p.name,
       role: p.rol || p.role,
-      percentage: p.porcentaje || p.percentage
+      percentage: p.porcentaje || p.percentage,
+      usuarioId: p.usuarioId || p.nombre || p.name
     })),
     claveAcceso: c.claveAcceso,
     activa: c.activa !== false,
@@ -34,6 +35,22 @@ class ApiService {
     });
   }
 
+  async register(nickname, password) {
+    const response = await this.api.post('/auth/register', { nickname, password });
+    return response.data?.datos || response.data;
+  }
+
+  async login(nickname, password) {
+    const response = await this.api.post('/auth/login', { nickname, password });
+    return response.data?.datos || response.data;
+  }
+
+  async checkNickname(nickname) {
+    const encoded = encodeURIComponent(nickname);
+    const response = await this.api.get(`/auth/check/${encoded}`);
+    return response.data;
+  }
+
   async getCanciones() {
     const response = await this.api.get('/canciones');
     const list = response.data?.datos || response.data || [];
@@ -47,17 +64,24 @@ class ApiService {
 
   async crearCancion(cancionData) {
     const precio = Number(cancionData.price ?? cancionData.precio);
+    if (!cancionData.usuarioId) {
+      throw new Error('usuarioId (nickname @) es obligatorio');
+    }
     const payload = {
       titulo: cancionData.title || cancionData.titulo,
       artista: cancionData.artist || cancionData.artista,
       linkArchivo: cancionData.url || cancionData.linkArchivo,
       precio,
-      participantes: (cancionData.participants || cancionData.participantes || []).map((p) => ({
-        nombre: p.name || p.nombre,
-        rol: p.role || p.rol,
-        porcentaje: Number(p.percentage ?? p.porcentaje)
-      })),
-      usuarioId: cancionData.usuarioId || 'artista_local'
+      participantes: (cancionData.participants || cancionData.participantes || []).map((p) => {
+        const nombre = p.name || p.nombre;
+        return {
+          nombre,
+          usuarioId: p.usuarioId || nombre,
+          rol: p.role || p.rol,
+          porcentaje: Number(p.percentage ?? p.porcentaje)
+        };
+      }),
+      usuarioId: cancionData.usuarioId
     };
 
     const response = await this.api.post('/canciones', payload);
@@ -68,10 +92,17 @@ class ApiService {
     const response = await this.api.post('/compras', {
       cancionId,
       compradorId,
-      // El backend usa el precio persistido de la canción; se envía por compatibilidad
       monto: monto != null ? Number(monto) : undefined
     });
     return response.data;
+  }
+
+  async getComprasByUsuario(compradorId) {
+    const response = await this.api.get('/compras', {
+      params: { compradorId }
+    });
+    const list = response.data?.datos || response.data || [];
+    return Array.isArray(list) ? list : [];
   }
 
   async obtenerClaveAcceso(cancionId) {
@@ -104,6 +135,11 @@ class ApiService {
   async health() {
     const base = API_BASE_URL.replace(/\/api\/?$/, '');
     const response = await axios.get(`${base || ''}/health`);
+    return response.data;
+  }
+
+  async getDemoInfo() {
+    const response = await this.api.get('/demo/info');
     return response.data;
   }
 }

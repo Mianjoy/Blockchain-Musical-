@@ -6,6 +6,7 @@ const Contrato = require('../../domain/entities/Contrato');
 const Transaccion = require('../../domain/value-objects/Transaccion');
 const ClaveAcceso = require('../../domain/value-objects/ClaveAcceso');
 const IBlockchainService = require('../../domain/interfaces/IBlockchainService');
+const fabricLog = require('../services/FabricWorkflowLog');
 
 /**
  * Servicio Hyperledger Fabric.
@@ -90,6 +91,14 @@ class HyperledgerFabricService extends IBlockchainService {
       this.contract = this.network.getContract(this.config.chaincodeName);
       this._modoSimulacion = false;
 
+      fabricLog.event('CONEXION', 'Gateway conectado a Hyperledger Fabric', {
+        canal: this.config.channelName,
+        chaincode: this.config.chaincodeName,
+        identidad: this.config.identity,
+        perfil: connectionPath,
+        asLocalhost: this.config.asLocalhost !== false
+      });
+
       console.log('Conexión a Hyperledger Fabric establecida correctamente');
       console.log(`  Canal: ${this.config.channelName}`);
       console.log(`  Chaincode: ${this.config.chaincodeName}`);
@@ -98,6 +107,7 @@ class HyperledgerFabricService extends IBlockchainService {
       return true;
     } catch (error) {
       console.error('Error inicializando Hyperledger Fabric:', error.message);
+      fabricLog.event('CONEXION', 'Fallo al conectar Fabric', { error: error.message });
       return this._activarSimulacionOFallar(error.message);
     }
   }
@@ -105,6 +115,7 @@ class HyperledgerFabricService extends IBlockchainService {
   _activarSimulacionOFallar(motivo) {
     if (this.config.allowSimulation) {
       this._modoSimulacion = true;
+      fabricLog.event('CONEXION', 'Modo SIMULACION activado', { motivo });
       console.warn(`[SIMULACIÓN] Activada porque ALLOW_SIMULATION=true. Motivo: ${motivo}`);
       return false;
     }
@@ -112,6 +123,10 @@ class HyperledgerFabricService extends IBlockchainService {
       `No se pudo conectar a Hyperledger Fabric y la simulación está desactivada. ${motivo}. ` +
         `Para forzar simulación: ALLOW_SIMULATION=true`
     );
+  }
+
+  _modoLabel() {
+    return this._modoSimulacion ? 'SIMULACION' : 'FABRIC';
   }
 
   async registrarCancion(cancion) {
@@ -123,11 +138,21 @@ class HyperledgerFabricService extends IBlockchainService {
 
     if (this._modoSimulacion) {
       this._simStore.canciones.set(cancion.id, cancion.toPlainObject());
+      fabricLog.event('LEDGER', 'Cancion registrada (simulacion)', {
+        cancionId: cancion.id,
+        titulo: cancion.titulo,
+        modo: this._modoLabel()
+      });
       console.log('[SIMULACIÓN] Registrando canción:', cancion.id);
       return true;
     }
 
     await this.contract.submitTransaction('crearCancion', cancionData);
+    fabricLog.event('LEDGER', 'Cancion registrada en Fabric (submitTransaction crearCancion)', {
+      cancionId: cancion.id,
+      titulo: cancion.titulo,
+      modo: this._modoLabel()
+    });
     console.log('Canción registrada en blockchain:', cancion.id);
     return true;
   }
@@ -160,11 +185,21 @@ class HyperledgerFabricService extends IBlockchainService {
       const plain = JSON.parse(JSON.stringify(contrato.toPlainObject()));
       this._simStore.contratos.set(contrato.id, plain);
       this._simStore.contratosPorCancion.set(contrato.cancionId, contrato.id);
+      fabricLog.event('LEDGER', 'Contrato de regalias registrado (simulacion)', {
+        contratoId: contrato.id,
+        cancionId: contrato.cancionId,
+        modo: this._modoLabel()
+      });
       console.log('[SIMULACIÓN] Registrando contrato:', contrato.id);
       return true;
     }
 
     await this.contract.submitTransaction('crearContrato', contratoData);
+    fabricLog.event('LEDGER', 'Contrato de regalias registrado en Fabric (crearContrato)', {
+      contratoId: contrato.id,
+      cancionId: contrato.cancionId,
+      modo: this._modoLabel()
+    });
     console.log('Contrato registrado en blockchain:', contrato.id);
     return true;
   }
@@ -223,10 +258,24 @@ class HyperledgerFabricService extends IBlockchainService {
       }
 
       console.log('[SIMULACIÓN] Registrando transacción:', transaccion.id);
+      fabricLog.event('LEDGER', 'Transaccion registrada en simulacion', {
+        transaccionId: transaccion.id,
+        contratoId: transaccion.contratoId,
+        compradorId: transaccion.compradorId,
+        monto: transaccion.monto,
+        modo: this._modoLabel()
+      });
       return true;
     }
 
     await this.contract.submitTransaction('registrarTransaccion', transaccionData);
+    fabricLog.event('LEDGER', 'submitTransaction registrarTransaccion', {
+      transaccionId: transaccion.id,
+      contratoId: transaccion.contratoId,
+      compradorId: transaccion.compradorId,
+      monto: transaccion.monto,
+      modo: this._modoLabel()
+    });
     console.log('Transacción registrada en blockchain:', transaccion.id);
     return true;
   }
@@ -299,11 +348,19 @@ class HyperledgerFabricService extends IBlockchainService {
         song.claveAcceso = clave.valor;
         this._simStore.canciones.set(cancionId, song);
       }
+      fabricLog.event('LEDGER', 'Clave de acceso generada en simulacion', {
+        cancionId,
+        modo: this._modoLabel()
+      });
       return clave;
     }
 
     await this.contract.submitTransaction('generarClaveAcceso', cancionId, clave.valor);
     this._claveCache.set(cancionId, clave);
+    fabricLog.event('LEDGER', 'submitTransaction generarClaveAcceso', {
+      cancionId,
+      modo: this._modoLabel()
+    });
     return clave;
   }
 
@@ -333,6 +390,7 @@ class HyperledgerFabricService extends IBlockchainService {
   async desconectar() {
     if (this.gateway) {
       this.gateway.disconnect();
+      fabricLog.event('CONEXION', 'Gateway Fabric desconectado');
       console.log('Conexión con blockchain cerrada');
     }
   }

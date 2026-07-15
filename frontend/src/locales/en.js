@@ -6,6 +6,17 @@ export const en = {
     "nav.create": "Create Song",
     "nav.purchases": "My Purchases",
     "nav.analytics": "Analytics",
+    "auth.subtitle": "Sign in with your @username identity",
+    "auth.login": "Sign in",
+    "auth.register": "Create account",
+    "auth.login.submit": "Sign in",
+    "auth.register.submit": "Register",
+    "auth.nickname": "Nickname",
+    "auth.nickname.hint": "Must start with @ and be unique (e.g. @artist1)",
+    "auth.password": "Password",
+    "auth.logout": "Log out",
+    "auth.error.generic": "Authentication failed",
+    "auth.error.session": "You must sign in with your @username",
     
     // Titles
     "app.title": "Music Royalty System",
@@ -31,8 +42,9 @@ export const en = {
     "song.create.form.price.label": "Price (USD)",
     "song.create.form.price.placeholder": "0.00",
     "song.create.form.participants.title": "Participants and Royalties",
+    "song.create.form.participants.hint": "Each participant must be a @username nickname (unique identity)",
     "song.create.form.participant.add": "Add Participant",
-    "song.create.form.participant.name": "Name",
+    "song.create.form.participant.name": "Nickname (@username)",
     "song.create.form.participant.role": "Role",
     "song.create.form.participant.percentage": "Percentage (%)",
     "song.create.form.participant.remove": "Remove",
@@ -45,6 +57,7 @@ export const en = {
     "song.create.validation.price.required": "Price is required",
     "song.create.validation.participants.required": "At least one participant is required",
     "song.create.validation.percentages.invalid": "Sum of percentages must be 100%",
+    "song.create.validation.nickname.invalid": "Participant {{index}}: use a valid @username nickname (3-30 chars)",
     
     // Songs list
     "songs.list.title": "Song Catalog",
@@ -54,6 +67,8 @@ export const en = {
     "songs.list.card.buy": "Buy",
     "songs.list.card.details": "View Details",
     "songs.catalog.kicker": "Available on blockchain",
+    "demo.banner.title": "Demo network — fictional users",
+    "demo.banner.text": "@ identities on the same network. Demo password: {{password}}. Buy with your account; royalties go to these @nicks.",
     "songs.catalog.lead": "Browse published titles, filter by artist, and open each song to review contracts and royalties.",
     "songs.catalog.filters": "Catalog filters",
     "songs.catalog.search": "Search by title, artist or ID…",
@@ -102,6 +117,10 @@ export const en = {
     "notifications.markAll": "Mark all read",
     "notifications.type.release": "Release",
     "notifications.type.sale": "Sale",
+    "notifications.release.title": "New release",
+    "notifications.release.message": "\"{{title}}\" by {{artist}} is now available in the catalog",
+    "notifications.sale.title": "New sale registered",
+    "notifications.sale.message": "Royalties were distributed for the purchase of \"{{title}}\"",
     
     // Song details
     "song.detail.title": "Song Details",
@@ -132,8 +151,12 @@ export const en = {
     "purchases.date": "Purchase Date",
     "purchases.amount": "Amount",
     "purchases.access.key": "Access Key",
+    "purchases.access.missing": "No key available",
     "purchases.download": "Download",
+    "purchases.download.missing": "This song has no download URL",
     "purchases.view.key": "View Key",
+    "purchases.refresh": "Refresh",
+    "purchases.forUser": "Purchases for {{nick}}",
     
     // Language
     "language.select": "Select Language",

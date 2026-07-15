@@ -4,6 +4,7 @@ const BlockchainContratoRepository = require('../infrastructure/repositories/Blo
 const CrearCancionUseCase = require('../application/use-cases/CrearCancionUseCase');
 const RegistrarCompraUseCase = require('../application/use-cases/RegistrarCompraUseCase');
 const ObtenerClaveAccesoUseCase = require('../application/use-cases/ObtenerClaveAccesoUseCase');
+const ObtenerComprasUsuarioUseCase = require('../application/use-cases/ObtenerComprasUsuarioUseCase');
 const AnalyticsService = require('../infrastructure/services/AnalyticsService');
 const notificationStore = require('../infrastructure/services/NotificationStore');
 
@@ -53,6 +54,11 @@ class DIContainer {
     this._services.set(
       'obtenerClaveAcceso',
       new ObtenerClaveAccesoUseCase(this._cancionRepository, this._blockchainService)
+    );
+
+    this._services.set(
+      'obtenerComprasUsuario',
+      new ObtenerComprasUsuarioUseCase(this._cancionRepository, this._contratoRepository)
     );
 
     console.log('Contenedor de dependencias inicializado correctamente');

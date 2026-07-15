@@ -6,6 +6,17 @@ export const es = {
     "nav.create": "Crear Canción",
     "nav.purchases": "Mis Compras",
     "nav.analytics": "Analytics",
+    "auth.subtitle": "Entra con tu identidad @usuario",
+    "auth.login": "Iniciar sesión",
+    "auth.register": "Crear cuenta",
+    "auth.login.submit": "Entrar",
+    "auth.register.submit": "Registrarme",
+    "auth.nickname": "Nickname",
+    "auth.nickname.hint": "Debe empezar con @ y ser único (ej. @artista1)",
+    "auth.password": "Contraseña",
+    "auth.logout": "Salir",
+    "auth.error.generic": "No se pudo autenticar",
+    "auth.error.session": "Debes iniciar sesión con tu @usuario",
     
     // Títulos
     "app.title": "Sistema de Regalías Musicales",
@@ -31,8 +42,9 @@ export const es = {
     "song.create.form.price.label": "Precio (USD)",
     "song.create.form.price.placeholder": "0.00",
     "song.create.form.participants.title": "Participantes y Regalías",
+    "song.create.form.participants.hint": "Cada participante debe ser un nickname @usuario (identidad única)",
     "song.create.form.participant.add": "Agregar Participante",
-    "song.create.form.participant.name": "Nombre",
+    "song.create.form.participant.name": "Nickname (@usuario)",
     "song.create.form.participant.role": "Rol",
     "song.create.form.participant.percentage": "Porcentaje (%)",
     "song.create.form.participant.remove": "Eliminar",
@@ -45,6 +57,7 @@ export const es = {
     "song.create.validation.price.required": "El precio es requerido",
     "song.create.validation.participants.required": "Al menos un participante es requerido",
     "song.create.validation.percentages.invalid": "La suma de porcentajes debe ser 100%",
+    "song.create.validation.nickname.invalid": "Participante {{index}}: usa un nickname válido @usuario (3-30 caracteres)",
     
     // Lista de canciones
     "songs.list.title": "Catálogo de Canciones",
@@ -54,6 +67,8 @@ export const es = {
     "songs.list.card.buy": "Comprar",
     "songs.list.card.details": "Ver Detalles",
     "songs.catalog.kicker": "Disponibles en blockchain",
+    "demo.banner.title": "Red demo — usuarios ficticios",
+    "demo.banner.text": "Identidades @ en la misma red. Contraseña de demo: {{password}}. Compra con tu cuenta; las regalías van a estos @nicks.",
     "songs.catalog.lead": "Explora el catálogo publicado, filtra por artista y abre cada título para ver contratos y regalías.",
     "songs.catalog.filters": "Filtros del catálogo",
     "songs.catalog.search": "Buscar por título, artista o ID…",
@@ -102,6 +117,10 @@ export const es = {
     "notifications.markAll": "Marcar todas",
     "notifications.type.release": "Lanzamiento",
     "notifications.type.sale": "Venta",
+    "notifications.release.title": "Nuevo lanzamiento",
+    "notifications.release.message": "\"{{title}}\" de {{artist}} ya está disponible en el catálogo",
+    "notifications.sale.title": "Nueva venta registrada",
+    "notifications.sale.message": "Se distribuyeron regalías por la compra de \"{{title}}\"",
     
     // Detalles de canción
     "song.detail.title": "Detalles de la Canción",
@@ -131,9 +150,13 @@ export const es = {
     "purchases.song.title": "Canción",
     "purchases.date": "Fecha de Compra",
     "purchases.amount": "Monto",
-    "purchases.access.key": "Clave de Acceso",
+    "purchases.access.key": "Clave de acceso",
+    "purchases.access.missing": "Sin clave disponible",
     "purchases.download": "Descargar",
-    "purchases.view.key": "Ver Clave",
+    "purchases.download.missing": "Esta canción no tiene URL de descarga",
+    "purchases.view.key": "Ver clave",
+    "purchases.refresh": "Actualizar",
+    "purchases.forUser": "Compras de {{nick}}",
     
     // Idioma
     "language.select": "Seleccionar Idioma",

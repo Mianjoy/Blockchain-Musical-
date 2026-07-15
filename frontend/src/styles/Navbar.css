@@ -55,6 +55,32 @@
   gap: 0.35rem;
 }
 
+.navbar-user {
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.9rem;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 0.35rem;
+}
+
+.nav-logout {
+  border: 1px solid rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.45rem 0.75rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.nav-logout:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .language-selector {
   padding: 0.5rem 1rem;
   border: 2px solid rgba(255, 255, 255, 0.3);

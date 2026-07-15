@@ -3,12 +3,23 @@ frontend/node_modules/
 chaincode/music-royalty/node_modules/
 .env
 .DS_Store
-*.log
+Thumbs.db
 
-# Hyperledger Fabric generated artifacts
+# Runtime / local stores
+data/users.json
+!data/.gitkeep
+logs/*
+!logs/.gitkeep
+*.log
+diagnostico.txt
+network/.dockertest/
+
+# Hyperledger Fabric generated
 wallet/*
 !wallet/.gitkeep
 connection.json
+connection-docker.json
+network/connection-profile/
 network/organizations/peerOrganizations/
 network/organizations/ordererOrganizations/
 network/organizations/fabric-ca/
@@ -17,6 +28,7 @@ network/system-genesis-block/
 network/**/*.tar.gz
 network/**/music-royalty.tar.gz
 
-# IDE
+# IDE / OS
 .idea/
 .vscode/
+*.swp

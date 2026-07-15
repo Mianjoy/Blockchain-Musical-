@@ -1,10 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import apiService from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import '../styles/SongDetailPage.css';
 
 const SongDetailPage = ({ song, setCurrentPage }) => {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [purchaseSuccess, setPurchaseSuccess] = useState(false);
   const [accessKey, setAccessKey] = useState('');
@@ -23,13 +25,17 @@ const SongDetailPage = ({ song, setCurrentPage }) => {
 
   const handlePurchase = async () => {
     if (purchasingRef.current || loading || purchaseSuccess) return;
+    if (!user?.nickname) {
+      setError(t('auth.error.session'));
+      return;
+    }
     purchasingRef.current = true;
     setLoading(true);
     setError('');
     try {
       const compra = await apiService.comprarCancion(
         song.id,
-        `buyer_${Date.now()}`,
+        user.nickname,
         song.price
       );
 
