@@ -25,9 +25,14 @@ const SongsPage = ({ setCurrentPage, setSelectedSong }) => {
   const [artistFilter, setArtistFilter] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
   const [view, setView] = useState('list');
+  const [demoInfo, setDemoInfo] = useState(null);
 
   useEffect(() => {
     loadSongs();
+    apiService
+      .getDemoInfo()
+      .then((info) => setDemoInfo(info))
+      .catch(() => setDemoInfo(null));
   }, []);
 
   const loadSongs = async () => {
@@ -100,6 +105,20 @@ const SongsPage = ({ setCurrentPage, setSelectedSong }) => {
           {t('nav.create')}
         </button>
       </header>
+
+      {demoInfo?.usuarios?.length > 0 && (
+        <section className="demo-network-banner" aria-label={t('demo.banner.title')}>
+          <h2>{t('demo.banner.title')}</h2>
+          <p>{t('demo.banner.text', { password: demoInfo.password })}</p>
+          <div className="demo-nicks">
+            {demoInfo.usuarios.map((u) => (
+              <span key={u.nickname} className="demo-nick-chip">
+                {u.nickname}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="catalog-toolbar" aria-label={t('songs.catalog.filters')}>
         <div className="catalog-search">

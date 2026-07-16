@@ -6,6 +6,7 @@ const Contrato = require('../../domain/entities/Contrato');
 const Transaccion = require('../../domain/value-objects/Transaccion');
 const ClaveAcceso = require('../../domain/value-objects/ClaveAcceso');
 const IBlockchainService = require('../../domain/interfaces/IBlockchainService');
+const fabricLog = require('../services/FabricWorkflowLog');
 
 /**
  * Servicio Hyperledger Fabric.
@@ -21,7 +22,7 @@ class HyperledgerFabricService extends IBlockchainService {
       connectionProfile:
         config.connectionProfile ||
         process.env.CONNECTION_PROFILE ||
-        path.join(projectRoot, 'connection.json'),
+        path.join(projectRoot, 'config', 'connection.json'),
       channelName: config.channelName || process.env.CHANNEL_NAME || 'mychannel',
       chaincodeName: config.chaincodeName || process.env.CHAINCODE_NAME || 'music-royalty',
       mspId: config.mspId || 'Org1MSP',
@@ -62,13 +63,23 @@ class HyperledgerFabricService extends IBlockchainService {
     const connectionPath = this.config.connectionProfile;
     if (!fs.existsSync(connectionPath)) {
       return this._activarSimulacionOFallar(
-        `No existe connection.json en ${connectionPath}. Ejecuta start-system.bat o network/scripts/network.sh up`
+        `No existe connection.json en ${connectionPath}. Ejecuta "Blockchain MUSIC - Fabric.exe" o launchers\\FABRIC-UP.bat`
       );
     }
 
     try {
       const wallet = await Wallets.newFileSystemWallet(this.config.walletPath);
-      const identity = await wallet.get(this.config.identity);
+      let identityLabel = this.config.identity;
+      let identity = await wallet.get(identityLabel);
+      if (!identity) {
+        for (const alt of ['admin', 'user1', 'appUser']) {
+          identity = await wallet.get(alt);
+          if (identity) {
+            identityLabel = alt;
+            break;
+          }
+        }
+      }
       if (!identity) {
         throw new Error(
           `Identidad '${this.config.identity}' no encontrada en wallet. Ejecuta: node scripts/enrollAppUser.js`
@@ -76,28 +87,71 @@ class HyperledgerFabricService extends IBlockchainService {
       }
 
       const ccp = JSON.parse(fs.readFileSync(connectionPath, 'utf8'));
-      this.gateway = new Gateway();
-      await this.gateway.connect(ccp, {
-        wallet,
-        identity: this.config.identity,
-        discovery: {
-          enabled: true,
-          asLocalhost: this.config.asLocalhost !== false
+      const asLocalhost = this.config.asLocalhost !== false;
+
+      // 1) Discovery ON (normal). 2) Si access denied / discovery falla → peers del CCP.
+      const modes = [
+        { enabled: true, asLocalhost, label: 'discovery' },
+        { enabled: false, asLocalhost, label: 'static-peers' }
+      ];
+
+      let lastError = null;
+      for (const mode of modes) {
+        try {
+          if (this.gateway) {
+            try {
+              this.gateway.disconnect();
+            } catch (_) {
+              /* ignore */
+            }
+            this.gateway = null;
+          }
+          this.gateway = new Gateway();
+          await this.gateway.connect(ccp, {
+            wallet,
+            identity: identityLabel,
+            discovery: {
+              enabled: mode.enabled,
+              asLocalhost: mode.asLocalhost
+            }
+          });
+
+          this.network = await this.gateway.getNetwork(this.config.channelName);
+          this.contract = this.network.getContract(this.config.chaincodeName);
+          this._modoSimulacion = false;
+
+          fabricLog.event('CONEXION', 'Gateway conectado a Hyperledger Fabric', {
+            canal: this.config.channelName,
+            chaincode: this.config.chaincodeName,
+            identidad: identityLabel,
+            perfil: connectionPath,
+            asLocalhost,
+            discovery: mode.enabled,
+            modo: mode.label
+          });
+
+          console.log('Conexión a Hyperledger Fabric establecida correctamente');
+          console.log(`  Canal: ${this.config.channelName}`);
+          console.log(`  Chaincode: ${this.config.chaincodeName}`);
+          console.log(`  Identidad: ${identityLabel}`);
+          console.log(`  Perfil: ${connectionPath}`);
+          console.log(`  asLocalhost: ${asLocalhost}`);
+          console.log(`  discovery: ${mode.enabled} (${mode.label})`);
+          return true;
+        } catch (modeErr) {
+          lastError = modeErr;
+          const msg = String(modeErr.message || modeErr);
+          console.warn(`[Fabric] Fallo modo ${mode.label}: ${msg}`);
+          if (!/access denied|discovery/i.test(msg) && mode.enabled) {
+            // Otros errores con discovery: igual intentar static
+            continue;
+          }
         }
-      });
-
-      this.network = await this.gateway.getNetwork(this.config.channelName);
-      this.contract = this.network.getContract(this.config.chaincodeName);
-      this._modoSimulacion = false;
-
-      console.log('Conexión a Hyperledger Fabric establecida correctamente');
-      console.log(`  Canal: ${this.config.channelName}`);
-      console.log(`  Chaincode: ${this.config.chaincodeName}`);
-      console.log(`  Perfil: ${connectionPath}`);
-      console.log(`  asLocalhost: ${this.config.asLocalhost !== false}`);
-      return true;
+      }
+      throw lastError || new Error('No se pudo conectar al canal');
     } catch (error) {
       console.error('Error inicializando Hyperledger Fabric:', error.message);
+      fabricLog.event('CONEXION', 'Fallo al conectar Fabric', { error: error.message });
       return this._activarSimulacionOFallar(error.message);
     }
   }
@@ -105,6 +159,7 @@ class HyperledgerFabricService extends IBlockchainService {
   _activarSimulacionOFallar(motivo) {
     if (this.config.allowSimulation) {
       this._modoSimulacion = true;
+      fabricLog.event('CONEXION', 'Modo SIMULACION activado', { motivo });
       console.warn(`[SIMULACIÓN] Activada porque ALLOW_SIMULATION=true. Motivo: ${motivo}`);
       return false;
     }
@@ -112,6 +167,10 @@ class HyperledgerFabricService extends IBlockchainService {
       `No se pudo conectar a Hyperledger Fabric y la simulación está desactivada. ${motivo}. ` +
         `Para forzar simulación: ALLOW_SIMULATION=true`
     );
+  }
+
+  _modoLabel() {
+    return this._modoSimulacion ? 'SIMULACION' : 'FABRIC';
   }
 
   async registrarCancion(cancion) {
@@ -123,11 +182,21 @@ class HyperledgerFabricService extends IBlockchainService {
 
     if (this._modoSimulacion) {
       this._simStore.canciones.set(cancion.id, cancion.toPlainObject());
+      fabricLog.event('LEDGER', 'Cancion registrada (simulacion)', {
+        cancionId: cancion.id,
+        titulo: cancion.titulo,
+        modo: this._modoLabel()
+      });
       console.log('[SIMULACIÓN] Registrando canción:', cancion.id);
       return true;
     }
 
     await this.contract.submitTransaction('crearCancion', cancionData);
+    fabricLog.event('LEDGER', 'Cancion registrada en Fabric (submitTransaction crearCancion)', {
+      cancionId: cancion.id,
+      titulo: cancion.titulo,
+      modo: this._modoLabel()
+    });
     console.log('Canción registrada en blockchain:', cancion.id);
     return true;
   }
@@ -160,11 +229,21 @@ class HyperledgerFabricService extends IBlockchainService {
       const plain = JSON.parse(JSON.stringify(contrato.toPlainObject()));
       this._simStore.contratos.set(contrato.id, plain);
       this._simStore.contratosPorCancion.set(contrato.cancionId, contrato.id);
+      fabricLog.event('LEDGER', 'Contrato de regalias registrado (simulacion)', {
+        contratoId: contrato.id,
+        cancionId: contrato.cancionId,
+        modo: this._modoLabel()
+      });
       console.log('[SIMULACIÓN] Registrando contrato:', contrato.id);
       return true;
     }
 
     await this.contract.submitTransaction('crearContrato', contratoData);
+    fabricLog.event('LEDGER', 'Contrato de regalias registrado en Fabric (crearContrato)', {
+      contratoId: contrato.id,
+      cancionId: contrato.cancionId,
+      modo: this._modoLabel()
+    });
     console.log('Contrato registrado en blockchain:', contrato.id);
     return true;
   }
@@ -223,10 +302,24 @@ class HyperledgerFabricService extends IBlockchainService {
       }
 
       console.log('[SIMULACIÓN] Registrando transacción:', transaccion.id);
+      fabricLog.event('LEDGER', 'Transaccion registrada en simulacion', {
+        transaccionId: transaccion.id,
+        contratoId: transaccion.contratoId,
+        compradorId: transaccion.compradorId,
+        monto: transaccion.monto,
+        modo: this._modoLabel()
+      });
       return true;
     }
 
     await this.contract.submitTransaction('registrarTransaccion', transaccionData);
+    fabricLog.event('LEDGER', 'submitTransaction registrarTransaccion', {
+      transaccionId: transaccion.id,
+      contratoId: transaccion.contratoId,
+      compradorId: transaccion.compradorId,
+      monto: transaccion.monto,
+      modo: this._modoLabel()
+    });
     console.log('Transacción registrada en blockchain:', transaccion.id);
     return true;
   }
@@ -299,11 +392,19 @@ class HyperledgerFabricService extends IBlockchainService {
         song.claveAcceso = clave.valor;
         this._simStore.canciones.set(cancionId, song);
       }
+      fabricLog.event('LEDGER', 'Clave de acceso generada en simulacion', {
+        cancionId,
+        modo: this._modoLabel()
+      });
       return clave;
     }
 
     await this.contract.submitTransaction('generarClaveAcceso', cancionId, clave.valor);
     this._claveCache.set(cancionId, clave);
+    fabricLog.event('LEDGER', 'submitTransaction generarClaveAcceso', {
+      cancionId,
+      modo: this._modoLabel()
+    });
     return clave;
   }
 
@@ -333,6 +434,7 @@ class HyperledgerFabricService extends IBlockchainService {
   async desconectar() {
     if (this.gateway) {
       this.gateway.disconnect();
+      fabricLog.event('CONEXION', 'Gateway Fabric desconectado');
       console.log('Conexión con blockchain cerrada');
     }
   }

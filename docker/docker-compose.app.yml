@@ -1,0 +1,43 @@
+# =============================================================================
+# Stack SOLO aplicación (API Express). El frontend suele ir por Vite en el host.
+# Se conecta a Fabric en la red externa music-royalty-fabric.
+#
+# Desde la raíz del repo:
+#   docker compose -f docker/docker-compose.app.yml up -d --build
+# =============================================================================
+name: music-royalty-app
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: music-royalty-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - CHANNEL_NAME=mychannel
+      - CHAINCODE_NAME=music-royalty
+      - ALLOW_SIMULATION=${ALLOW_SIMULATION:-false}
+      - FABRIC_AS_LOCALHOST=false
+      - CONNECTION_PROFILE=/app/config/connection-docker.json
+    volumes:
+      - ../wallet:/app/wallet
+      - ../config/connection.json:/app/config/connection.json:ro
+      - ../config/connection-docker.json:/app/config/connection-docker.json:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - music-royalty-app
+      - music-royalty-fabric
+    restart: unless-stopped
+
+networks:
+  music-royalty-app:
+    driver: bridge
+  music-royalty-fabric:
+    external: true
+    name: music-royalty-fabric

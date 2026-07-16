@@ -1,6 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const DIContainer = require('./DIContainer');
+const UserAuthStore = require('../infrastructure/auth/UserAuthStore');
+const { validateNickname } = require('../domain/utils/nickname');
+const { seedDemoCatalog, DEMO_PASSWORD, DEMO_USERS } = require('../infrastructure/seed/seedDemoCatalog');
+const fabricLog = require('../infrastructure/services/FabricWorkflowLog');
 
 /**
  * API REST para el sistema de regalías musicales
@@ -10,6 +14,7 @@ class MusicRoyaltyAPI {
   constructor() {
     this.app = express();
     this.container = null;
+    this.authStore = new UserAuthStore();
     this.port = process.env.PORT || 3000;
     this.host = process.env.HOST || '0.0.0.0';
 
@@ -44,6 +49,12 @@ class MusicRoyaltyAPI {
       });
     });
 
+    // Auth: nickname @ + password
+    this.app.post('/api/auth/register', this.registrarUsuario.bind(this));
+    this.app.post('/api/auth/login', this.loginUsuario.bind(this));
+    this.app.post('/api/auth/recover', this.recuperarContrasena.bind(this));
+    this.app.get('/api/auth/check/:nickname', this.verificarNickname.bind(this));
+
     // Rutas de canciones
     this.app.post('/api/canciones', this.crearCancion.bind(this));
     this.app.get('/api/canciones', this.obtenerCanciones.bind(this));
@@ -51,6 +62,7 @@ class MusicRoyaltyAPI {
 
     // Rutas de compra
     this.app.post('/api/compras', this.registrarCompra.bind(this));
+    this.app.get('/api/compras', this.obtenerComprasUsuario.bind(this));
 
     // Rutas de descarga
     this.app.get('/api/descargar/:cancionId', this.obtenerDescarga.bind(this));
@@ -60,6 +72,11 @@ class MusicRoyaltyAPI {
     this.app.get('/api/notificaciones', this.listarNotificaciones.bind(this));
     this.app.post('/api/notificaciones/:id/leer', this.marcarNotificacionLeida.bind(this));
     this.app.post('/api/notificaciones/leer-todas', this.marcarTodasNotificaciones.bind(this));
+
+    // Catálogo demo (usuarios @ + canciones)
+    this.app.post('/api/admin/seed-demo', this.seedDemo.bind(this));
+    this.app.get('/api/demo/info', this.demoInfo.bind(this));
+    this.app.get('/api/logs/fabric-workflow', this.obtenerLogFabric.bind(this));
   }
 
   /**
@@ -69,6 +86,19 @@ class MusicRoyaltyAPI {
     console.log('Inicializando API...');
     this.container = new DIContainer();
     await this.container.inicializar(config);
+
+    try {
+      await seedDemoCatalog({
+        authStore: this.authStore,
+        crearCancionUseCase: this.container.getUseCase('crearCancion'),
+        cancionRepository: this.container.getCancionRepository(),
+        notificationStore: this.container.getNotificationStore(),
+        force: process.env.SEED_DEMO_FORCE === 'true'
+      });
+    } catch (err) {
+      console.warn('[SEED] No se pudo cargar catálogo demo:', err.message);
+    }
+
     console.log('API inicializada correctamente');
     return this;
   }
@@ -88,6 +118,83 @@ class MusicRoyaltyAPI {
   }
 
   /**
+   * POST /api/auth/register
+   */
+  async registrarUsuario(req, res, next) {
+    try {
+      const { nickname, password } = req.body || {};
+      const user = await this.authStore.register(nickname, password);
+      res.status(201).json({
+        mensaje: 'Usuario registrado',
+        datos: user
+      });
+    } catch (error) {
+      error.statusCode = 400;
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/auth/login
+   */
+  async loginUsuario(req, res, next) {
+    try {
+      const { nickname, password } = req.body || {};
+      const user = await this.authStore.login(nickname, password);
+      res.json({
+        mensaje: 'Login correcto',
+        datos: user
+      });
+    } catch (error) {
+      error.statusCode = 401;
+      next(error);
+    }
+  }
+
+  /**
+   * POST /api/auth/recover
+   * Body: { nickname, recoveryCode, newPassword }
+   */
+  async recuperarContrasena(req, res, next) {
+    try {
+      const { nickname, recoveryCode, newPassword } = req.body || {};
+      const result = await this.authStore.resetPasswordWithRecovery(
+        nickname,
+        recoveryCode,
+        newPassword
+      );
+      res.json({
+        mensaje:
+          'Contraseña actualizada. Guarda el nuevo código de recuperación; el anterior ya no sirve.',
+        datos: result
+      });
+    } catch (error) {
+      error.statusCode = 400;
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/auth/check/:nickname
+   */
+  async verificarNickname(req, res, next) {
+    try {
+      const v = validateNickname(req.params.nickname);
+      if (!v.ok) {
+        return res.status(400).json({ error: v.error, disponible: false });
+      }
+      const existe = this.authStore.exists(v.nickname);
+      res.json({
+        nickname: v.nickname,
+        existe,
+        disponible: !existe
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * POST /api/canciones
    * Crea una nueva canción con su contrato inteligente
    */
@@ -96,10 +203,10 @@ class MusicRoyaltyAPI {
       const { titulo, artista, linkArchivo, participantes, usuarioId, precio, price } = req.body;
       const precioFinal = Number(precio ?? price);
 
-      if (!titulo || !artista || !linkArchivo || !participantes) {
+      if (!titulo || !artista || !linkArchivo || !participantes || !usuarioId) {
         return res.status(400).json({
           error: 'Datos incompletos',
-          requeridos: ['titulo', 'artista', 'linkArchivo', 'participantes', 'precio']
+          requeridos: ['titulo', 'artista', 'linkArchivo', 'participantes', 'precio', 'usuarioId']
         });
       }
 
@@ -115,7 +222,7 @@ class MusicRoyaltyAPI {
         artista,
         linkArchivo,
         participantes,
-        usuarioId: usuarioId || 'usuario_anonimo',
+        usuarioId,
         precio: precioFinal
       });
 
@@ -193,10 +300,17 @@ class MusicRoyaltyAPI {
         });
       }
 
+      const nick = validateNickname(compradorId);
+      if (!nick.ok) {
+        return res.status(400).json({
+          error: `compradorId inválido: ${nick.error}`
+        });
+      }
+
       const useCase = this.container.getUseCase('registrarCompra');
       const resultado = await useCase.execute({
         cancionId,
-        compradorId,
+        compradorId: nick.nickname,
         monto: req.body.monto
       });
 
@@ -209,6 +323,8 @@ class MusicRoyaltyAPI {
           : `Se distribuyeron regalías por la compra de ${cancionId}`,
         payload: {
           cancionId,
+          titulo: cancion?.titulo || cancionId,
+          artista: cancion?.artista || '',
           monto: resultado.monto,
           distribucion: resultado.distribucion
         }
@@ -217,6 +333,31 @@ class MusicRoyaltyAPI {
       res.status(201).json({
         mensaje: 'Compra registrada exitosamente',
         datos: resultado
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/compras?compradorId=@usuario
+   * Lista las compras del nickname autenticado en el cliente
+   */
+  async obtenerComprasUsuario(req, res, next) {
+    try {
+      const compradorId = req.query.compradorId;
+      if (!compradorId) {
+        return res.status(400).json({
+          error: 'Falta compradorId',
+          requeridos: ['compradorId']
+        });
+      }
+
+      const useCase = this.container.getUseCase('obtenerComprasUsuario');
+      const compras = await useCase.execute({ compradorId });
+      res.json({
+        total: compras.length,
+        datos: compras
       });
     } catch (error) {
       next(error);
@@ -293,6 +434,51 @@ class MusicRoyaltyAPI {
     try {
       const total = this.container.getNotificationStore().marcarTodasLeidas();
       res.json({ mensaje: 'Notificaciones marcadas como leídas', total });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/logs/fabric-workflow?lines=200
+   * Últimas líneas del registro de flujos Fabric (para demos / proyector)
+   */
+  async obtenerLogFabric(req, res, next) {
+    try {
+      const lines = Math.min(Number(req.query.lines) || 200, 2000);
+      const contenido = fabricLog.tail(lines);
+      res.type('text/plain').send(contenido);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * GET /api/demo/info
+   * Usuarios ficticios del catálogo demo
+   */
+  async demoInfo(req, res) {
+    res.json({
+      password: DEMO_PASSWORD,
+      usuarios: DEMO_USERS,
+      nota: 'Son identidades @ de la misma red. Puedes comprar el catálogo con tu cuenta o entrar como ellos.'
+    });
+  }
+
+  /**
+   * POST /api/admin/seed-demo
+   * Regenera catálogo demo (force)
+   */
+  async seedDemo(req, res, next) {
+    try {
+      const result = await seedDemoCatalog({
+        authStore: this.authStore,
+        crearCancionUseCase: this.container.getUseCase('crearCancion'),
+        cancionRepository: this.container.getCancionRepository(),
+        notificationStore: this.container.getNotificationStore(),
+        force: true
+      });
+      res.json({ mensaje: 'Catálogo demo procesado', datos: result });
     } catch (error) {
       next(error);
     }

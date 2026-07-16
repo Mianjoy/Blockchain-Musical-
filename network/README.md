@@ -2,7 +2,9 @@
 
 Red de prueba **Fabric 2.5.16** + **CA 1.5.21**: Org1 (peer + CA), orderer, canal `mychannel` y chaincode `music-royalty`.
 
-> `fabric-tools:3.x` ya no existe en Docker Hub (imagen deprecada por Hyperledger). Se usa la línea 2.5 LTS.
+> `fabric-tools:3.x` ya no existe en Docker Hub. Se usa la línea **2.5 LTS**.
+
+Documentación completa (instalación Windows, diagramas, troubleshooting): **[README principal](../README.md)**.
 
 ## Requisitos
 
@@ -12,77 +14,25 @@ Red de prueba **Fabric 2.5.16** + **CA 1.5.21**: Org1 (peer + CA), orderer, cana
 
 ## Arranque rápido (Windows nativo)
 
-No requiere Git Bash. Orquestación: `scripts\windows\fabric-up.bat` (CMD + Docker).
-
 ```bat
-ARRANCAR-FABRIC.bat
+..\Blockchain MUSIC - Fabric.exe
+..\launchers\FABRIC-UP.bat
+..\launchers\REPARAR-FABRIC.bat
 ```
-
-Si hubo un fallo previo:
-
-```bat
-REPARAR-FABRIC.bat
-ARRANCAR-FABRIC.bat
-```
-
-Alternativas:
-
-```bat
-ARRANCAR.bat          :: intenta Fabric; si falla → DEMO
-ARRANCAR-DEMO.bat     :: solo simulacion
-DETENER.bat           :: apaga API + Fabric
-```
-
-Detalle: [README principal](../README.md).
-
-### Comandos Fabric (Windows CMD)
 
 ```bat
 scripts\windows\fabric-up.bat up
 scripts\windows\fabric-up.bat down
 scripts\windows\fabric-up.bat clean
-scripts\windows\generate-crypto-native.bat
-node scripts\enrollAppUser.js
 ```
 
-## Comandos manuales (bash / Mac / Linux)
+## Bash / Mac / Linux
 
 ```bash
 bash network/scripts/network.sh up
-bash network/scripts/network.sh generate
-bash network/scripts/network.sh channel
-bash network/scripts/network.sh deployCC
-bash network/scripts/network.sh enroll
 bash network/scripts/network.sh down
 bash network/scripts/network.sh clean
+bash network/scripts/network.sh enroll
 ```
 
-## Endpoints Fabric
-
-| Servicio | Host |
-|----------|------|
-| Peer Org1 | `localhost:7051` |
-| Orderer | `localhost:7050` |
-| Orderer Admin | `localhost:7053` |
-| CA Org1 | `localhost:7054` |
-
-## Simulación (opcional)
-
-Por defecto la app **exige** Fabric. Para permitir fallback:
-
-```bat
-set ALLOW_SIMULATION=true
-node index.js
-```
-
-## Estructura
-
-```
-network/
-  docker-compose-net.yaml
-  configtx/configtx.yaml
-  organizations/cryptogen/
-  scripts/network.sh
-scripts/windows/fabric-up.bat
-chaincode/music-royalty/
-```
+Artefactos generados (MSP, channel block, `config/connection.json`) **no se versionan**.

@@ -1,10 +1,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import NotificationBell from './NotificationBell';
+import { useAuth } from '../contexts/AuthContext';
 import '../styles/Navbar.css';
 
 const Navbar = ({ currentPage, setCurrentPage }) => {
   const { t, i18n } = useTranslation();
+  const { user, logout } = useAuth();
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
@@ -51,6 +53,12 @@ const Navbar = ({ currentPage, setCurrentPage }) => {
 
       <div className="navbar-right">
         <NotificationBell />
+        <span className="navbar-user" title={user?.nickname}>
+          {user?.nickname}
+        </span>
+        <button type="button" className="nav-logout" onClick={logout}>
+          {t('auth.logout')}
+        </button>
         <div className="navbar-language">
           <select
             value={i18n.language}

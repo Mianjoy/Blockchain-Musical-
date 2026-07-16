@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import i18n from '../i18n';
 import apiService from '../services/api';
+import { formatNotification } from '../utils/formatNotification';
 
 const NotificationContext = createContext(null);
 
@@ -8,8 +10,9 @@ function showBrowserPush(notification) {
   if (Notification.permission !== 'granted') return;
 
   try {
-    const n = new Notification(notification.titulo, {
-      body: notification.mensaje,
+    const { title, message } = formatNotification(notification, i18n.t.bind(i18n));
+    const n = new Notification(title, {
+      body: message,
       tag: notification.id,
       icon: '/vite.svg'
     });

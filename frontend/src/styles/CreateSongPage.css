@@ -78,8 +78,14 @@
 
 .participants-section h3 {
   color: #333;
-  margin-bottom: 1rem;
+  margin-bottom: 0.35rem;
   font-size: 1.3rem;
+}
+
+.participants-hint {
+  margin: 0 0 1rem;
+  font-size: 0.9rem;
+  color: #5a6f7a;
 }
 
 .participant-row {

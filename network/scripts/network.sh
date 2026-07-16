@@ -7,7 +7,7 @@ source "${SCRIPT_DIR}/env.sh"
 
 MODE="${1:-up}"
 
-# Importante en Windows: NO escribir fabric-network.log desde este script.
+# Importante en Windows: NO escribir logs/fabric-network.log desde este script.
 # run-bash.bat ya redirige stdout/stderr a ese archivo; abrirlo aqui provoca
 # "Device or resource busy" y corta el arranque.
 
@@ -42,9 +42,12 @@ function networkClean() {
          "${ROOT_DIR}/system-genesis-block" \
          "${ROOT_DIR}/organizations/fabric-ca/org1" \
          "${PROJECT_DIR}/wallet"/* \
-         "${PROJECT_DIR}/connection.json"
-  # No borrar fabric-network.log aqui si el wrapper lo tiene abierto
+         "${PROJECT_DIR}/connection.json" \
+         "${PROJECT_DIR}/config/connection.json" \
+         "${PROJECT_DIR}/config/connection-docker.json"
+  # No borrar logs/fabric-network.log aqui si el wrapper lo tiene abierto
   mkdir -p "${PROJECT_DIR}/wallet"
+  mkdir -p "${PROJECT_DIR}/config"
   printSuccess "Limpieza completa"
 }
 
@@ -182,8 +185,8 @@ function _print_endpoints() {
   echo "  Peer:       localhost:7051"
   echo "  Orderer:    localhost:7050"
   echo "  CA Org1:    localhost:7054"
-  echo "  Connection: ${PROJECT_DIR}/connection.json"
-  echo "  Log:        ${PROJECT_DIR}/fabric-network.log  (escrito por ARRANCAR/run-bash)"
+  echo "  Connection: ${PROJECT_DIR}/config/connection.json"
+  echo "  Log:        ${PROJECT_DIR}/logs/fabric-network.log  (escrito por ARRANCAR/run-bash)"
 }
 
 case "${MODE}" in

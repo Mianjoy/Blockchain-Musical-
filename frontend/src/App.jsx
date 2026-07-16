@@ -6,13 +6,20 @@ import CreateSongPage from './pages/CreateSongPage';
 import SongDetailPage from './pages/SongDetailPage';
 import PurchasesPage from './pages/PurchasesPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import LoginPage from './pages/LoginPage';
 import { LanguageProvider } from './contexts/LanguageContext.jsx';
 import { NotificationProvider } from './contexts/NotificationContext.jsx';
+import { AuthProvider, useAuth } from './contexts/AuthContext.jsx';
 import './styles/App.css';
 
-function App() {
+function AppShell() {
+  const { isAuthenticated } = useAuth();
   const [currentPage, setCurrentPage] = useState('home');
   const [selectedSong, setSelectedSong] = useState(null);
+
+  if (!isAuthenticated) {
+    return <LoginPage />;
+  }
 
   const renderPage = () => {
     switch (currentPage) {
@@ -34,15 +41,21 @@ function App() {
   };
 
   return (
+    <div className="app">
+      <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      <main className="main-content">{renderPage()}</main>
+    </div>
+  );
+}
+
+function App() {
+  return (
     <LanguageProvider>
-      <NotificationProvider>
-        <div className="app">
-          <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
-          <main className="main-content">
-            {renderPage()}
-          </main>
-        </div>
-      </NotificationProvider>
+      <AuthProvider>
+        <NotificationProvider>
+          <AppShell />
+        </NotificationProvider>
+      </AuthProvider>
     </LanguageProvider>
   );
 }

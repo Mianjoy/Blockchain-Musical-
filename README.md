@@ -1,424 +1,441 @@
-# Sistema de Regalías Musicales con Blockchain
+# Music Royalty — Sistema de Regalías Musicales con Hyperledger Fabric
 
-Plataforma descentralizada para gestionar **canciones, contratos de regalías y ventas** sobre **Hyperledger Fabric 3.1**, con arquitectura DDD/SOLID, API REST y frontend React (ES/EN).
+Plataforma académica / demo para **registrar canciones**, definir **contratos de regalías** con identidades `@usuario`, **vender** en catálogo y **distribuir pagos** de forma trazable sobre **Hyperledger Fabric** (o simulación local).
+
+| Capa | Tecnología |
+|------|------------|
+| UI | React 18 + Vite + react-i18next (ES/EN) |
+| API | Node.js + Express (DDD / casos de uso) |
+| Identidad app | Nickname `@usuario` + contraseña (`data/users.json`) |
+| Blockchain | Hyperledger Fabric **2.5.16** + Fabric CA **1.5.21** |
+| Chaincode | Node (`music-royalty`) en canal `mychannel` |
+| Contenedores | Docker Desktop + Compose |
 
 ---
 
-## Windows — arranque con un solo clic
+## Tabla de contenidos
 
-Objetivo: **descargar el proyecto y arrancar todo** (dependencias + Fabric + API + frontend) con un archivo `.bat`.
+1. [Qué hace el negocio](#1-qué-hace-el-negocio)
+2. [Arquitectura y despliegue](#2-arquitectura-y-despliegue)
+3. [Diagramas de flujo](#3-diagramas-de-flujo)
+4. [Requisitos](#4-requisitos)
+5. [Instalación y arranque (Windows)](#5-instalación-y-arranque-windows)
+6. [Uso de la aplicación](#6-uso-de-la-aplicación)
+7. [API REST](#7-api-rest)
+8. [Estructura del repositorio](#8-estructura-del-repositorio)
+9. [Scripts útiles](#9-scripts-útiles)
+10. [Solución de problemas](#10-solución-de-problemas)
+11. [Mac / Linux](#11-mac--linux)
 
-### Paso 1 — Descargar
+---
 
-1. Entra al repositorio: [Blockchain-Musical-](https://github.com/Mianjoy/Blockchain-Musical-)
-2. Pulsa **Code → Download ZIP**
-3. Extrae el ZIP en una carpeta, por ejemplo:
-   - `C:\MusicRoyalty\`
-   - o `D:\Usuarios\Documentos\GitHub\Blockchain-Musical-\`
+## 1. Qué hace el negocio
 
-> También puedes clonar:  
-> `git clone https://github.com/Mianjoy/Blockchain-Musical-.git`
+1. Un usuario se **registra / inicia sesión** con un nickname único tipo `@artista1`.
+2. Puede **publicar una canción** con precio y participantes de regalías (solo nicknames `@…`, porcentajes = 100%).
+3. Otros usuarios **compran** desde el catálogo; la compra genera una **transacción** y **reparte el monto**.
+4. El comprador obtiene una **clave de acceso** para descargar.
+5. **Analytics** y **notificaciones** reflejan lanzamientos y ventas.
 
-### Paso 2 — Arrancar (separado: Fabric ↔ App)
+Al arrancar la API se siembra un **catálogo demo** con usuarios ficticios de la misma red (password `demo1234`):  
+`@luna_beats`, `@marco_prod`, `@sofia_lyrics`, `@dj_nova`, `@echo_label`, `@riley_mix`.
 
-Fabric va en **contenedores Docker**. La App (API + frontend) es **independiente** y se conecta si Fabric está arriba.
+---
 
-```text
-1) FABRIC-UP.bat     → solo blockchain (Docker)
-2) APP-UP.bat        → API + UI (se conecta a Fabric si está en :7051)
+## 2. Arquitectura y despliegue
+
+### Diagrama de despliegue
+
+```mermaid
+flowchart TB
+  subgraph host["PC Windows / Host"]
+    UI["Frontend Vite :3001"]
+    API["API Express :3000"]
+    Wallet["wallet + config/connection.json"]
+    Users[("data/users.json")]
+  end
+
+  subgraph docker["Docker Desktop - red music-royalty-fabric"]
+    CA["fabric-ca :7054"]
+    ORD["orderer :7050"]
+    PEER["peer0.org1 :7051"]
+    CLI["fabric-cli"]
+    CC["chaincode music-royalty"]
+  end
+
+  UserBrowser["Navegador"] -->|HTTP| UI
+  UI -->|"/api proxy"| API
+  API --> Users
+  API -->|SDK fabric-network| Wallet
+  API -->|"gRPC TLS localhost"| PEER
+  API -->|"gRPC TLS localhost"| ORD
+  PEER --> CC
+  PEER --> ORD
+  CLI --> PEER
+  CLI --> ORD
+  CA -.->|"MSP/certs en setup"| Wallet
 ```
 
-Opciones rápidas:
+### Componentes
 
-| Archivo | Qué hace |
-|---------|----------|
-| **`FABRIC-UP.bat`** | Solo Hyperledger Fabric 2.5.16 (contenedores) |
-| **`FABRIC-DOWN.bat`** | Solo apaga Fabric |
-| **`APP-UP.bat`** | Solo API+UI; conecta a Fabric o usa simulación |
-| **`ARRANCAR-DEMO.bat`** | Solo UI/API en simulación (sin Docker) |
-| **`ARRANCAR.bat`** | Menú: Demo / Fabric / Fabric+App |
-| **`CERRAR-TODO.bat`** | Apaga API, UI y Fabric |
+| Pieza | Rol |
+|-------|-----|
+| **Frontend** | Login, catálogo, crear canción, compra, mis compras, analytics, notificaciones |
+| **API** | Auth, canciones, compras, claves, analytics, seed demo |
+| **Fabric** | Ledger inmutable: canciones, contratos, transacciones |
+| **Modo simulación** | Si no hay Fabric (`ALLOW_SIMULATION=true`), memoria local equivalente |
 
-Compose separados:
+### Puertos
 
-```text
-docker-compose.fabric.yml   # red music-royalty-fabric
-docker-compose.app.yml      # API unida a esa red
+| Servicio | Puerto |
+|----------|--------|
+| Frontend | `3001` |
+| API | `3000` |
+| Peer | `7051` |
+| Orderer | `7050` |
+| Fabric CA | `7054` |
+
+---
+
+## 3. Diagramas de flujo
+
+### 3.1 Registro / Login / Recuperación
+
+```mermaid
+flowchart TD
+  Start(["Abrir app"]) --> Gate{"Sesion en localStorage?"}
+  Gate -->|No| Login["LoginPage"]
+  Gate -->|Si| App["App protegida"]
+  Login --> Mode{"Modo"}
+  Mode -->|Crear cuenta| Reg["POST /api/auth/register"]
+  Mode -->|Entrar| Auth["POST /api/auth/login"]
+  Mode -->|Recuperar| Rec["POST /api/auth/recover"]
+  Reg --> Valid{"Nickname @ unico?"}
+  Valid -->|No| Err["Error"]
+  Valid -->|Si| Save[("users.json + hash scrypt")]
+  Save --> Code["Mostrar recoveryCode una vez"]
+  Code --> Sess["Guardar sesion @nick"]
+  Auth --> Check{"Password OK?"}
+  Check -->|No| Err
+  Check -->|Si| Sess
+  Rec --> RecOk{"Codigo recuperacion OK?"}
+  RecOk -->|No| Err
+  RecOk -->|Si| NewPass["Nueva password + nuevo codigo"]
+  NewPass --> Login
+  Sess --> App
 ```
 
-Comprobar conexión:
+### 3.2 Publicar canción + contrato de regalías
 
-```text
-http://localhost:3000/health
-→ fabric.connected: true | simulation: true
+```mermaid
+flowchart TD
+  U["@usuario logueado"] --> Form["Formulario CreateSong"]
+  Form --> ValUI{"Titulo, URL, precio, participantes @, suma 100?"}
+  ValUI -->|No| Fix["Corregir formulario"]
+  ValUI -->|Si| API["POST /api/canciones"]
+  API --> UC["CrearCancionUseCase"]
+  UC --> ValBE{"Cada participante es @ valido?"}
+  ValBE -->|No| Err400["400"]
+  ValBE -->|Si| Repo["Guardar Cancion + Contrato"]
+  Repo --> BC["registrarCancion / registrarContrato"]
+  BC --> Ledger[("Fabric o simulacion")]
+  Ledger --> Key["generarClaveAcceso"]
+  Key --> Notif["Notificacion lanzamiento"]
+  Notif --> OK(["Cancion en catalogo"])
 ```
 
-### Paso 3 — Usar el sistema
+### 3.3 Compra y distribución de regalías
 
-La primera vez puede tardar varios minutos (imágenes Docker). Cuando termine:
+```mermaid
+flowchart TD
+  Buyer["@comprador"] --> Detail["SongDetail: Comprar"]
+  Detail --> Buy["POST /api/compras"]
+  Buy --> ValNick{"compradorId es @?"}
+  ValNick -->|No| Err["Error"]
+  ValNick -->|Si| UC["RegistrarCompraUseCase"]
+  UC --> Price["Usar precio de la cancion"]
+  Price --> Dist["Contrato.distribuirRegalias"]
+  Dist --> Tx["Transaccion + distribucion por @nick"]
+  Tx --> Ledger[("Ledger / sim")]
+  Ledger --> Key["Devolver claveAcceso"]
+  Key --> Notif["Notificacion venta"]
+  Notif --> Mine["GET /api/compras?compradorId=@nick"]
+  Mine --> UI["Mis Compras"]
+```
 
-| Qué | Dirección |
-|-----|-----------|
-| **Interfaz** | http://localhost:3001 |
-| **API** | http://localhost:3000/api |
-| **Health / Fabric** | http://localhost:3000/health |
+### 3.4 Arranque del sistema (Windows)
 
-### Paso 4 — Detener
+```mermaid
+flowchart LR
+  A["Blockchain MUSIC - Fabric.exe"] --> D["Docker: CA Peer Orderer CLI"]
+  D --> C["Crypto + canal + chaincode"]
+  C --> E["enroll: config/connection.json + wallet"]
+  E --> B["Blockchain MUSIC.exe"]
+  B --> API["node index.js + SEED_DEMO"]
+  B --> UI["npm run dev :3001"]
+  API --> H{"Peer :7051?"}
+  H -->|Si| F["Modo FABRIC"]
+  H -->|No| S["Modo SIMULACION"]
+```
+
+---
+
+## 4. Requisitos
+
+| Software | Para qué |
+|----------|----------|
+| **Windows 10/11** (recomendado) | Scripts `.bat` oficiales |
+| **Node.js 18+** | API, frontend, enroll wallet |
+| **Docker Desktop** | Red Fabric real (icono en **verde**) |
+| **Git** (opcional) | Clonar repo / scripts bash |
+
+Activa **File sharing** de la unidad del proyecto en Docker Desktop (p. ej. `D:`).
+
+---
+
+## 5. Instalación y arranque (Windows)
+
+### 5.1 Obtener el código
+
+```bat
+git clone https://github.com/Mianjoy/Blockchain-Musical-.git
+cd Blockchain-Musical-
+```
+
+O descarga ZIP → **Code → Download ZIP** y extráelo.
+
+### 5.2 Dependencias (primera vez)
 
 Doble clic en:
 
 ```text
-DETENER.bat
+launchers\install-dependencies.bat
 ```
 
-### Primera vez: Docker Desktop
-
-Hyperledger Fabric **necesita Docker Desktop**:
-
-1. Si el instalador automático lo instaló, **reinicia el PC** si Docker lo pide
-2. Abre **Docker Desktop** y espera el icono **en verde**
-3. Vuelve a hacer doble clic en **`ARRANCAR.bat`**
-
-Si no hay `winget`, el script abrirá las descargas oficiales:
-
-- [Node.js LTS](https://nodejs.org/en/download)
-- [Git for Windows](https://git-scm.com/download/win) (incluye Git Bash)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-
-Instálalos, reinicia si hace falta, y ejecuta otra vez `ARRANCAR.bat`.
-
-### Acceso directo en el Escritorio (opcional)
+Instala/verifica Node, (opcional) Git y Docker. También:
 
 ```text
-crear-acceso-directo.bat
+npm install
+cd frontend && npm install
 ```
 
-Crea **Music Royalty - Arrancar.lnk** en el Escritorio.
+### 5.3 Arranque recomendado (los dos .exe)
 
-### ¿Y un .exe?
+En la **raíz** del repo:
 
-El arranque oficial es **`ARRANCAR.bat`** (doble clic, igual que un ejecutable).  
-No es práctico meter Fabric + Docker en un único `.exe` autónomo: Fabric requiere Docker. El `.bat` es el launcher soportado.
+```text
+1) Abre Docker Desktop → espera icono verde
+2) Blockchain MUSIC - Fabric.exe   → red blockchain (puede tardar varios minutos la 1ª vez)
+3) Blockchain MUSIC.exe            → API + UI (si falta Fabric, cae a simulación)
+```
 
-Puedes crear un `.exe` “cara” con herramientas tipo *Bat to Exe* apuntando a `ARRANCAR.bat`; el comportamiento sigue siendo el mismo.
+Lee también `EMPEZAR.txt` en la raíz.
 
-### Checklist
+### 5.4 Scripts avanzados (`launchers\`)
 
-- [ ] ZIP descargado y descomprimido  
-- [ ] Doble clic en `ARRANCAR.bat`  
-- [ ] Docker Desktop en verde (primera vez)  
-- [ ] Navegador en http://localhost:3001  
-- [ ] Apagar con `DETENER.bat`  
+| Script | Función |
+|--------|---------|
+| `launchers\FABRIC-UP.bat` | Solo Fabric 2.5.16 (contenedores + canal + chaincode + wallet) |
+| `launchers\FABRIC-DOWN.bat` | Solo apaga Fabric |
+| `launchers\APP-UP.bat` | API + frontend |
+| `launchers\ARRANCAR-DEMO.bat` | Solo simulación (sin Docker) |
+| `launchers\ARRANCAR.bat` | Menú: Fabric+App, DEMO, solo Fabric o solo App. Args: `/demo`, `/fabric`, `/app` |
+| `launchers\CERRAR-TODO.bat` / `DETENER.bat` | Cierra API, UI y Fabric |
+| `launchers\crear-acceso-directo.bat` | Accesos en el Escritorio a los `.exe` |
+| `launchers\REPARAR-FABRIC.bat` | Limpia y regenera la red |
+| `launchers\FIX-DOCKER-API.bat` | Mitiga error API Docker 1.25 al instalar chaincode |
+| `launchers\DIAGNOSTICO.bat` | Prueba Docker y montaje de volúmenes |
+
+### 5.5 URLs
+
+| Qué | URL |
+|-----|-----|
+| Interfaz | http://localhost:3001 |
+| API | http://localhost:3000/api |
+| Health | http://localhost:3000/health |
+| Info catálogo demo | http://localhost:3000/api/demo/info |
+
+Comprobar Fabric:
+
+```text
+http://localhost:3000/health
+→ fabric.connected: true   (o simulation: true)
+```
+
+### 5.6 Compose
+
+```text
+docker/docker-compose.fabric.yml  # peer, orderer, CA, CLI (red music-royalty-fabric)
+network/docker-compose-net.yaml   # compose usado por fabric-up.bat
+docker/docker-compose.app.yml     # API opcional en la misma red Docker
+```
 
 ---
 
-## Características
+## 6. Uso de la aplicación
 
-- **Hyperledger Fabric real** — CA Org1, peer, orderer, canal `mychannel`, chaincode `music-royalty`
-- **Contratos inteligentes** — distribución automática de regalías (porcentajes = 100%)
-- **Catálogo profesional** — lista/cuadrícula, búsqueda, filtros y ordenación
-- **Analytics y reportes** — KPIs, ventas, regalías por canción y beneficiario
-- **Notificaciones** — campana + push del navegador (lanzamientos y ventas)
-- **Multi-idioma** — Español e Inglés
-- **Arranque Windows con un clic** — `ARRANCAR.bat`
-- **Modo simulación opcional** — solo con `ALLOW_SIMULATION=true`
+1. **Crear cuenta** (`@minombre` + contraseña ≥ 4) o login.
+2. **Canciones**: catálogo demo + filtros; ver banner de usuarios ficticios.
+3. **Crear canción**: participantes solo con `@nickname`; % = 100.
+4. **Comprar**: la compra usa tu `@`; regalías a los `@` del contrato.
+5. **Mis compras**: listado real de tu nickname (sin datos genéricos).
+6. **Analytics / Notificaciones**: ventas y lanzamientos (i18n ES/EN).
 
 ---
 
-## Requisitos (el launcher intenta instalarlos)
+## 7. API REST
 
-| Herramienta | Uso |
-|-------------|-----|
-| **Docker Desktop** | Red Fabric 2.5.16 (obligatorio para Fabric real) |
-| **Node.js 18+** | API, frontend y wallet |
-| Git Bash | Opcional (solo scripts `.sh` legacy / Mac-Linux) |
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| `POST` | `/api/auth/register` | Alta `@nick` + password → devuelve `recoveryCode` (una vez) |
+| `POST` | `/api/auth/login` | Login |
+| `POST` | `/api/auth/recover` | Reset clave con nick + código de recuperación |
+| `GET` | `/api/auth/check/:nickname` | Disponibilidad de nick |
+| `GET` | `/api/canciones` | Listar |
+| `GET` | `/api/canciones/:id` | Detalle |
+| `POST` | `/api/canciones` | Crear (requiere `usuarioId` `@…`) |
+| `POST` | `/api/compras` | Comprar |
+| `GET` | `/api/compras?compradorId=@nick` | Compras del usuario |
+| `GET` | `/api/descargar/:cancionId` | Clave de acceso |
+| `GET` | `/api/analytics/regalias` | Reportes |
+| `GET` | `/api/notificaciones` | Notificaciones |
+| `GET` | `/api/demo/info` | Usuarios demo |
+| `GET` | `/api/logs/fabric-workflow` | Últimas líneas del registro de flujos |
+| `POST` | `/api/admin/seed-demo` | Re-sembrar catálogo demo |
+| `GET` | `/health` | Estado API / Fabric |
+
+### Registro de flujos Fabric (demo / proyector)
+
+Cada operación relevante escribe en:
+
+```text
+logs/fabric-workflow.log
+```
+
+Bloques por flujo, por ejemplo:
+
+- `PUBLICAR_CANCION` — validación → ledger canción → contrato → clave
+- `COMPRA_Y_REGALIAS` — precio → distribución por `@nick` → transacción
+- `SEED_CATALOGO_DEMO` — usuarios y canciones demo
+- Eventos `CONEXION` / `LEDGER` / `RED_FABRIC` (arranque de red)
+
+Ver en vivo:
+
+```text
+http://localhost:3000/api/logs/fabric-workflow?lines=300
+```
+
+O abrir el archivo en un editor mientras haces compras/publicaciones.
+
+Variables útiles:
+
+| Variable | Efecto |
+|----------|--------|
+| `ALLOW_SIMULATION=true` | Permite API sin Fabric |
+| `SEED_DEMO=false` | No genera catálogo demo |
+| `SEED_DEMO_FORCE=true` | Intenta completar demos faltantes |
+| `CONNECTION_PROFILE` | Ruta a `config/connection.json` |
+| `FABRIC_AS_LOCALHOST` | `true` si la API corre en el host Windows |
 
 ---
 
-## Otros scripts (Windows)
+## 8. Estructura del repositorio
 
-| Archivo | Uso |
-|---------|-----|
-| `ARRANCAR.bat` | Fabric nativo + fallback DEMO |
-| `ARRANCAR-FABRIC.bat` | Solo Fabric real (Windows nativo) |
-| `ARRANCAR-DEMO.bat` | Solo simulación |
-| `REPARAR-FABRIC.bat` | Reset limpio de la red Fabric |
-| `CERRAR-TODO.bat` | **Cierra el sistema completo** (aunque no haya arrancado nada) |
-| `DETENER.bat` | Alias de `CERRAR-TODO.bat` |
-| `FIX-DOCKER-API.bat` | Ajuste Docker Desktop API antigua |
-| `install-dependencies.bat` | Solo deps (con preguntas) |
-| `crear-acceso-directo.bat` | Acceso directo en el Escritorio |
+```text
+Blockchain-Musical-/
+├── api/                    # Express + DI
+├── application/use-cases/  # Crear canción, compra, claves, listar compras
+├── domain/                 # Entidades, nickname utils
+├── infrastructure/
+│   ├── auth/               # UserAuthStore
+│   ├── blockchain/         # HyperledgerFabricService
+│   ├── repositories/
+│   ├── seed/               # Catálogo demo
+│   └── services/           # Analytics, notificaciones
+├── chaincode/music-royalty/
+├── frontend/               # React + Vite (app oficial)
+├── network/                # Compose, configtx, scripts Fabric
+├── docker/                 # docker-compose.fabric.yml / app.yml
+├── config/                 # connection.json (generado; .example versionado)
+├── logs/                   # fabric-network.log, fabric-workflow.log
+├── tests/                  # tests del proyecto
+├── scripts/windows/        # fabric-up, start-app, docker helpers
+├── launchers/              # .bat de usuario (APP-UP, FABRIC-UP, ...)
+├── packaging/              # fuentes C# + iconos de los .exe
+├── data/                   # users.json (local, gitignored)
+├── wallet/                 # Identidad SDK (gitignored)
+├── package.json / index.js # Entrada Node (permanecen en la raíz)
+├── Blockchain MUSIC.exe
+├── Blockchain MUSIC - Fabric.exe
+├── EMPEZAR.txt
+└── README.md
+```
 
-Red Fabric: [network/README.md](network/README.md)
+La **raíz** queda para: los dos `.exe`, `EMPEZAR.txt`, `README.md`, y también `package.json` / `index.js` (Node los necesita ahí + `node_modules`).
 
-### Mac / Linux
+No versionar: `config/connection.json`, `wallet/*`, crypto MSP, `data/users.json`, `*.log`.
+
+---
+
+## 9. Scripts útiles
+
+```bat
+launchers\REPARAR-FABRIC.bat
+launchers\FIX-DOCKER-API.bat
+launchers\DIAGNOSTICO.bat
+```
+
+Manual Fabric (CMD):
+
+```bat
+scripts\windows\fabric-up.bat up
+scripts\windows\fabric-up.bat down
+scripts\windows\fabric-up.bat clean
+node scripts\enrollAppUser.js
+```
+
+### Lanzadores Windows (.exe)
+
+En la **raíz** del repo (copia también en `dist\`):
+
+| Archivo | Icono | Acción |
+|---------|-------|--------|
+| `Blockchain MUSIC.exe` | nota musical | Arranca `launchers\APP-UP.bat` (API + frontend) |
+| `Blockchain MUSIC - Fabric.exe` | logo Hyperledger Fabric | Arranca `launchers\FABRIC-UP.bat` (red Fabric) |
+
+Recompilar: `packaging\build-exes.bat`  
+Accesos en Escritorio: `launchers\crear-acceso-directo.bat`
+
+## 10. Solución de problemas
+
+| Problema | Qué hacer |
+|----------|-----------|
+| `fabric-tools:3.x not found` | El proyecto usa **2.5.16** (tools 3.x ya no se publica) |
+| Docker no en PATH / no responde | Abrir Docker Desktop en verde; `Blockchain MUSIC - Fabric.exe` / `launchers\FABRIC-UP.bat` espera el CLI |
+| Error volúmenes / 125 | File sharing de la unidad del repo en Docker Desktop |
+| `client version 1.25 is too old` | `launchers\FIX-DOCKER-API.bat` → Apply & Restart → `launchers\REPARAR-FABRIC.bat` |
+| `discovery error: access denied` / `unknown authority` | Crypto/volumen desalineados: `launchers\REPARAR-FABRIC.bat` (borra volúmenes Docker + regenera MSP). Luego App exe |
+| Canal sin `height` ilegible | Ya hay auto-reset; si falla: `launchers\REPARAR-FABRIC.bat` |
+| API en simulación con Fabric “arriba” | Ejecuta `launchers\REPARAR-FABRIC.bat` y luego los dos `.exe` (o `launchers\ARRANCAR.bat`) |
+| API busca `connection.json` mal | Debe estar en **`config/connection.json`** (generado por `FABRIC-UP`) |
+| Mis compras genéricas | Ya se listan por `@` real; reinicia API tras actualizar |
+| Catálogo vacío | Reinicia API (`SEED_DEMO=true`) o `POST /api/admin/seed-demo` |
+
+---
+
+## 11. Mac / Linux
 
 ```bash
 chmod +x start-system.sh stop-system.sh network/scripts/*.sh
 ./start-system.sh
-```
-
-### Solo la red Fabric
-
-```bash
+# detener:
+./stop-system.sh
+# o solo red:
 bash network/scripts/network.sh up
-bash network/scripts/network.sh down
-bash network/scripts/network.sh clean
-bash network/scripts/network.sh enroll
 ```
-
-### URLs y puertos
-
-| Servicio | URL / puerto |
-|----------|----------------|
-| Frontend | http://localhost:3001 |
-| API | http://localhost:3000/api |
-| Health | http://localhost:3000/health |
-| Peer / Orderer / CA | `7051` / `7050` / `7054` |
-
-> Sin `ALLOW_SIMULATION=true`, la API exige Fabric conectado.
-
----
-
-## Guía de uso
-
-### 1. Explorar el catálogo
-
-1. Abre **Canciones**
-2. Usa búsqueda, filtro por artista y ordenación
-3. Alterna vista **lista** o **cuadrícula**
-4. Abre **Ver detalles**
-
-### 2. Crear una canción con contrato
-
-1. **Crear Canción** → título, artista, URL, precio
-2. Participantes con porcentajes que **sumen 100%**
-3. Se registra en blockchain + clave de acceso
-4. Notificación de **nuevo lanzamiento**
-
-### 3. Comprar y repartir regalías
-
-1. **Realizar Compra** en el detalle
-2. Transacción en Fabric + distribución
-3. Clave de descarga + notificación de venta
-
-### 4. Analytics
-
-Menú **Analytics**: KPIs, tablas por canción / beneficiario y actividad reciente.
-
-### 5. Notificaciones
-
-Campana en la navbar → **Activar push** → marcar leídas.
-
----
-
-## API REST
-
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET` | `/health` | Estado y Fabric |
-| `POST` | `/api/canciones` | Crear canción + contrato |
-| `GET` | `/api/canciones` | Listar |
-| `GET` | `/api/canciones/:id` | Detalle |
-| `POST` | `/api/compras` | Compra / regalías |
-| `GET` | `/api/descargar/:cancionId` | Clave de acceso |
-| `GET` | `/api/analytics/regalias` | Reportes |
-| `GET` | `/api/notificaciones` | Listar (`?unread=true`) |
-| `POST` | `/api/notificaciones/:id/leer` | Marcar leída |
-| `POST` | `/api/notificaciones/leer-todas` | Marcar todas |
-
----
-
-## Arquitectura
-
-```
-Blockchain-Musical-/
-├── ARRANCAR.bat                    # ← Doble clic en Windows
-├── DETENER.bat
-├── install-dependencies-auto.bat
-├── crear-acceso-directo.bat
-├── domain/
-├── application/use-cases/
-├── infrastructure/
-│   ├── blockchain/
-│   ├── repositories/
-│   └── services/                   # Analytics + notificaciones
-├── api/
-├── chaincode/music-royalty/
-├── network/                        # Fabric 3.1 test-network
-├── frontend/
-├── scripts/enrollAppUser.js
-├── start-system.bat / .sh
-├── stop-system.bat / .sh
-└── index.js
-```
-
-Patrones: **SOLID**, Repository, DI, Use Case, Factory.
-
----
-
-## Chaincode (`music-royalty`)
-
-| Función | Descripción |
-|---------|-------------|
-| `InitLedger` | Inicialización |
-| `crearCancion` / `actualizarCancion` | Canciones |
-| `crearContrato` / `actualizarContrato` | Contratos |
-| `obtenerContratoPorCancion` | Índice canción → contrato |
-| `registrarTransaccion` | Compra + eventos |
-| `generarClaveAcceso` / `validarClaveAcceso` | Claves |
-| `consultarTodasLasCanciones` | Listado on-chain |
-
----
-
-## Instalación manual (desarrollo)
-
-```bash
-npm install
-cd frontend && npm install && cd ..
-bash network/scripts/network.sh up
-npm start
-cd frontend && npm run dev -- --host 0.0.0.0 --port 3001
-```
-
-```env
-PORT=3000
-HOST=0.0.0.0
-CHANNEL_NAME=mychannel
-CHAINCODE_NAME=music-royalty
-ALLOW_SIMULATION=false
-VITE_API_URL=http://localhost:3000/api
-```
-
-Simulación sin Fabric:
-
-```bash
-ALLOW_SIMULATION=true npm start
-```
-
----
-
-## Acceso en red local
-
-1. Arranca con `ARRANCAR.bat` (`HOST=0.0.0.0`)
-2. Obtén tu IP (`ipconfig`)
-3. Abre `http://<TU_IP>:3001`
-
-```powershell
-netsh advfirewall firewall add rule name="Music Royalty Backend" dir=in action=allow protocol=TCP localport=3000
-netsh advfirewall firewall add rule name="Music Royalty Frontend" dir=in action=allow protocol=TCP localport=3001
-```
-
----
-
-## Flujo de negocio
-
-```
-Crear canción (+ %) → Contrato en Fabric → Notificación de lanzamiento
-        ↓
-     Compra → Regalías on-chain → Notificación de venta
-        ↓
-   Clave de descarga + Analytics
-```
-
----
-
-## Seguridad
-
-1. Claves **SHA-256**
-2. Ledger Fabric **inmutable**
-3. Porcentajes validados (= 100%)
-4. Wallet X.509 `appUser`
-5. TLS en peer / orderer / CA
-
----
-
-## Solución de problemas
-
-### En Windows no arranca
-
-1. Ejecuta de nuevo **`ARRANCAR.bat`**
-2. Revisa **`arranque.log`** y **`fabric-network.log`**
-3. Confirma **Docker Desktop en verde**
-4. Si acabas de instalar Node/Git/Docker, reinicia y vuelve a ejecutar `ARRANCAR.bat`
-5. Asistente manual: `install-dependencies.bat`
-
-### Error Fabric código **125**
-
-Docker no pudo montar carpetas del proyecto (File sharing / rutas).
-
-El arranque Windows ya usa **`fabric-up.bat`** (CMD + Docker, sin Git Bash). Si aún falla:
-
-1. Docker Desktop → **Settings → Resources → File sharing**
-2. Marca la unidad del proyecto (`C:` o `D:`) → **Apply & Restart**
-3. Ejecuta **`REPARAR-FABRIC.bat`**
-4. Luego **`ARRANCAR-FABRIC.bat`**
-
-Detalle: `fabric-network.log`
-
-### Error: `timed out waiting for txid on all peers`
-
-El approve/commit ya trabaja **sin `waitForEvent`** y sondea `checkcommitreadiness` (más estable en Docker Desktop). Si aún falla:
-
-1. **`REPARAR-FABRIC.bat`** → **`ARRANCAR-FABRIC.bat`**
-2. O **`ARRANCAR-DEMO.bat`** (app usable en simulación)
-
-### Error: `creator org unknown, creator is malformed`
-
-La identidad Admin del CLI no encaja con el canal (MSP sin `config.yaml` NodeOUs, o canal/volumenes Docker de un intento anterior con otros certificados).
-
-1. Ejecuta **`REPARAR-FABRIC.bat`** (borra volúmenes + regenera crypto + `config.yaml`)
-2. Luego **`ARRANCAR-FABRIC.bat`**
-3. Revisa `fabric-network.log` si vuelve a fallar
-
-### Error: `client version 1.25 is too old` / `Minimum supported API version is 1.40`
-
-Al **instalar el chaincode**, el peer intenta hacer `docker build`. Docker Desktop reciente exige API ≥ 1.40, y el cliente Docker embebido en Fabric 2.5.x puede ser más antiguo.
-
-Solución:
-
-1. Ejecuta **`FIX-DOCKER-API.bat`** → en Docker Desktop **Apply & Restart** (añade `"min-api-version": "1.24"`)
-2. Ejecuta **`REPARAR-FABRIC.bat`** (limpia y regenera red)
-3. Ejecuta **`FABRIC-UP.bat`** o **`ARRANCAR.bat`**
-
-Nota: fabric-tools **3.x ya no se publica** en Docker Hub; por eso el proyecto usa **Fabric 2.5.16** (peer + orderer + tools disponibles).
-
-### Red Fabric
-
-```bash
-bash network/scripts/network.sh down
-bash network/scripts/network.sh clean
-bash network/scripts/network.sh up
-docker compose -f network/docker-compose-net.yaml logs
-```
-
-### `/health` → `"connected": false`
-
-1. `docker ps` (peer, orderer, ca)
-2. `node scripts/enrollAppUser.js`
-3. Reinicia la API sin `ALLOW_SIMULATION=true`
-
-### Puertos ocupados
-
-`DETENER.bat` o libera `3000`, `3001`, `7050`, `7051`, `7054`.
-
-### Limpiar todo
-
-```bash
-bash network/scripts/network.sh clean
-```
-
----
-
-## Roadmap
-
-- Pagos reales (Stripe, PayPal)
-- Autenticación con certificados / identidad de usuario
-- Multi-organización Fabric (Org2+)
-- Integración con streaming
 
 ---
 
 ## Licencia
 
-MIT
+MIT — proyecto de demostración / fines académicos.

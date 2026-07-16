@@ -10,7 +10,10 @@ cd /d "%~dp0\..\.."
 set "ROOT=%CD%"
 set "NET=%ROOT%\network"
 set "CC=%ROOT%\chaincode\music-royalty"
-set "LOG=%ROOT%\fabric-network.log"
+if not exist "%ROOT%\logs" mkdir "%ROOT%\logs"
+if not exist "%ROOT%\config" mkdir "%ROOT%\config"
+set "LOG=%ROOT%\logs\fabric-network.log"
+set "WFLOG=%ROOT%\logs\fabric-workflow.log"
 set "FABRIC_VER=2.5.16"
 set "CA_VER=1.5.21"
 set "CHANNEL=mychannel"
@@ -29,7 +32,7 @@ call "%ROOT%\scripts\windows\refresh-path.bat"
 if exist "%ProgramFiles%\nodejs\node.exe" set "PATH=%ProgramFiles%\nodejs;%PATH%"
 call "%ROOT%\scripts\windows\find-docker.bat"
 if errorlevel 1 (
-  call :err "docker.exe no encontrado. Abre Docker Desktop o ejecuta FABRIC-UP.bat / install-dependencies.bat"
+  call :err "docker.exe no encontrado. Abre Docker Desktop o ejecuta Blockchain MUSIC - Fabric.exe / launchers\install-dependencies.bat"
   exit /b 1
 )
 if not defined MR_COMPOSE set "MR_COMPOSE=docker compose"
@@ -50,15 +53,36 @@ exit /b 1
 call :log "[INFO] Deteniendo red Fabric..."
 set "IMAGE_TAG=%FABRIC_VER%"
 set "CA_IMAGE_TAG=%CA_VER%"
+set "COMPOSE_PROJECT_NAME=musicroyalty"
 pushd "%NET%"
 %MR_COMPOSE% -f docker-compose-net.yaml down --volumes --remove-orphans >nul 2>&1
 popd
 pushd "%ROOT%"
-%MR_COMPOSE% -f docker-compose.fabric.yml down --volumes --remove-orphans >nul 2>&1
+%MR_COMPOSE% -f docker\docker-compose.fabric.yml down --volumes --remove-orphans >nul 2>&1
 popd
+:: Contenedores por nombre (por si compose no los bajo)
+for %%N in (
+  peer0.org1.example.com
+  orderer.example.com
+  ca_org1
+  fabric-cli
+) do "%MR_DOCKER%" rm -f %%N >nul 2>&1
 for /f "tokens=*" %%i in ('"%MR_DOCKER%" ps -aq --filter "name=dev-peer" 2^>nul') do "%MR_DOCKER%" rm -f %%i >nul 2>&1
 for /f "tokens=*" %%i in ('"%MR_DOCKER%" images -q --filter "reference=dev-peer*" 2^>nul') do "%MR_DOCKER%" rmi -f %%i >nul 2>&1
+:: Volumenes viejos = causa tipica de "access denied" / unknown authority
+call :purge_fabric_volumes
 call :log "[OK] Red detenida"
+exit /b 0
+
+:purge_fabric_volumes
+call :log "[INFO] Eliminando volumenes Docker de Fabric..."
+for /f "tokens=*" %%V in ('"%MR_DOCKER%" volume ls -q 2^>nul') do (
+  echo %%V| findstr /i /c:"musicroyalty" /c:"music-royalty" /c:"peer0.org1" /c:"orderer.example" /c:"fabric-ca" >nul
+  if not errorlevel 1 (
+    "%MR_DOCKER%" volume rm -f "%%V" >nul 2>&1
+    call :log "  volume rm %%V"
+  )
+)
 exit /b 0
 
 :do_clean
@@ -68,9 +92,14 @@ if exist "%NET%\organizations\peerOrganizations" rmdir /s /q "%NET%\organization
 if exist "%NET%\organizations\ordererOrganizations" rmdir /s /q "%NET%\organizations\ordererOrganizations"
 if exist "%NET%\channel-artifacts" rmdir /s /q "%NET%\channel-artifacts"
 if exist "%NET%\organizations\fabric-ca\org1" rmdir /s /q "%NET%\organizations\fabric-ca\org1"
+if exist "%NET%\connection-profile" rmdir /s /q "%NET%\connection-profile"
 if exist "%ROOT%\connection.json" del /f /q "%ROOT%\connection.json"
+if exist "%ROOT%\connection-docker.json" del /f /q "%ROOT%\connection-docker.json"
+if exist "%ROOT%\config\connection.json" del /f /q "%ROOT%\config\connection.json"
+if exist "%ROOT%\config\connection-docker.json" del /f /q "%ROOT%\config\connection-docker.json"
 if exist "%ROOT%\wallet" rmdir /s /q "%ROOT%\wallet"
 mkdir "%ROOT%\wallet" 2>nul
+call :purge_fabric_volumes
 call :log "[OK] Limpieza completa"
 exit /b 0
 
@@ -133,14 +162,14 @@ call :log "  Usando network/docker-compose-net.yaml"
 set "RC=!ERRORLEVEL!"
 popd
 if not "!RC!"=="0" (
-  call :log "  Fallback a docker-compose.fabric.yml (raiz)..."
+  call :log "  Fallback a docker/docker-compose.fabric.yml..."
   pushd "%ROOT%"
-  %MR_COMPOSE% -f docker-compose.fabric.yml up -d >>"%LOG%" 2>&1
+  %MR_COMPOSE% -f docker\docker-compose.fabric.yml up -d >>"%LOG%" 2>&1
   set "RC=!ERRORLEVEL!"
   popd
 )
 if not "!RC!"=="0" (
-  call :err "docker compose up fallo (!RC!). Revisa File sharing y fabric-network.log"
+  call :err "docker compose up fallo (!RC!). Revisa File sharing y logs\fabric-network.log"
   exit /b !RC!
 )
 
@@ -176,7 +205,7 @@ if errorlevel 1 (
     call :do_clean
     goto do_up
   )
-  call :err "Identidad MSP sigue invalida tras reset. Revisa fabric-network.log"
+  call :err "Identidad MSP sigue invalida tras reset. Revisa logs\fabric-network.log"
   exit /b 1
 )
 
@@ -206,7 +235,7 @@ if errorlevel 1 (
       call :do_clean
       goto do_up
     )
-    call :err "Canal ilegible tras reset. Revisa fabric-network.log y ejecuta REPARAR-FABRIC.bat"
+    call :err "Canal ilegible tras reset. Revisa logs\fabric-network.log y ejecuta launchers\REPARAR-FABRIC.bat"
     type "%TEMP%\mr-chinfo.txt"
     exit /b 1
   )
@@ -226,12 +255,26 @@ if errorlevel 1 (
 )
 timeout /t 5 /nobreak >nul
 
-docker exec fabric-cli peer lifecycle chaincode querycommitted --channelID %CHANNEL% --name %CC_NAME% >nul 2>&1
+docker exec fabric-cli peer lifecycle chaincode querycommitted --channelID %CHANNEL% --name %CC_NAME% >"%TEMP%\mr-qcommit.txt" 2>&1
+findstr /i /c:"access denied" /c:"creator org unknown" /c:"creator is malformed" /c:"unknown authority" "%TEMP%\mr-qcommit.txt" >nul
+if not errorlevel 1 (
+  type "%TEMP%\mr-qcommit.txt" >>"%LOG%"
+  if "!RECOVERY_DONE!"=="0" (
+    call :log "[AVISO] querycommitted rechazo MSP (crypto/volumen desalineados). Reset completo..."
+    set "RECOVERY_DONE=1"
+    call :do_clean
+    goto do_up
+  )
+  call :err "MSP sigue invalido tras reset (querycommitted access denied)"
+  type "%TEMP%\mr-qcommit.txt"
+  exit /b 1
+)
+findstr /i /c:"Version:" /c:"Sequence:" "%TEMP%\mr-qcommit.txt" >nul
 if errorlevel 1 (
   call :log "[6/7] Desplegando chaincode %CC_NAME%..."
   call :deploy_cc
   if errorlevel 1 (
-    findstr /i /c:"malformed" /c:"creator org" "%LOG%" >nul
+    findstr /i /c:"malformed" /c:"creator org" /c:"access denied" "%LOG%" >nul
     if not errorlevel 1 if "!RECOVERY_DONE!"=="0" (
       call :log "[AVISO] Deploy fallo por MSP. Reset completo..."
       set "RECOVERY_DONE=1"
@@ -242,6 +285,7 @@ if errorlevel 1 (
   )
 ) else (
   call :log "[6/7] Chaincode ya committed"
+  type "%TEMP%\mr-qcommit.txt" >>"%LOG%"
 )
 
 call :log "[7/7] Generando connection.json + wallet..."
@@ -250,12 +294,39 @@ if errorlevel 1 (
   call :err "node no esta en PATH"
   exit /b 1
 )
+if exist "%ROOT%\wallet" rmdir /s /q "%ROOT%\wallet"
+mkdir "%ROOT%\wallet" 2>nul
+if not exist "%ROOT%\config" mkdir "%ROOT%\config"
+if exist "%ROOT%\config\connection.json" del /f /q "%ROOT%\config\connection.json"
+if exist "%ROOT%\connection.json" del /f /q "%ROOT%\connection.json"
 pushd "%ROOT%"
+set "FORCE_REENROLL=1"
 node scripts\enrollAppUser.js >>"%LOG%" 2>&1
 set "RC=!ERRORLEVEL!"
 popd
 if not "!RC!"=="0" (
   call :err "enrollAppUser.js fallo"
+  exit /b 1
+)
+
+call :log "[7b/7] Verificando SDK (Gateway + discovery)..."
+pushd "%ROOT%"
+set "ALLOW_SIMULATION=false"
+set "FABRIC_AS_LOCALHOST=true"
+set "CONNECTION_PROFILE=%ROOT%\config\connection.json"
+set "CHANNEL_NAME=%CHANNEL%"
+set "CHAINCODE_NAME=%CC_NAME%"
+node scripts\verifyFabricSdk.js >>"%LOG%" 2>&1
+set "RC=!ERRORLEVEL!"
+popd
+if not "!RC!"=="0" (
+  if "!RECOVERY_DONE!"=="0" (
+    call :log "[AVISO] SDK access denied / conexion fallida. Reset completo..."
+    set "RECOVERY_DONE=1"
+    call :do_clean
+    goto do_up
+  )
+  call :err "SDK no conecta tras reset. Revisa logs\fabric-network.log"
   exit /b 1
 )
 
@@ -330,6 +401,9 @@ timeout /t 3 /nobreak >nul
 goto wh_loop
 
 :channel_has_height
+:: Si hay rechazo MSP, el canal NO es legible aunque el fichero tenga ruido
+findstr /i /c:"access denied" /c:"creator org unknown" /c:"creator is malformed" /c:"unknown authority" "%TEMP%\mr-chinfo.txt" >nul
+if not errorlevel 1 exit /b 1
 :: Fabric 2.5+ usa JSON: {"height":1,...}  →  la clave es "height" (comillas antes de :)
 :: No buscar "height:" porque falla: height":1
 findstr /i /c:"Blockchain info" "%TEMP%\mr-chinfo.txt" >nul
@@ -453,9 +527,15 @@ exit /b 0
 :log
 echo %~1
 >>"%LOG%" echo %date% %time% %~1
+if defined WFLOG (
+  >>"%WFLOG%" echo [%date% %time%] EVENTO  [RED_FABRIC]  %~1
+)
 exit /b 0
 
 :err
 echo [ERROR] %~1
 >>"%LOG%" echo %date% %time% [ERROR] %~1
+if defined WFLOG (
+  >>"%WFLOG%" echo [%date% %time%] EVENTO  [RED_FABRIC]  ERROR %~1
+)
 exit /b 1
