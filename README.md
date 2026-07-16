@@ -11,6 +11,15 @@ Plataforma académica / demo para **registrar canciones**, definir **contratos d
 | Chaincode | Node (`music-royalty`) en canal `mychannel` |
 | Contenedores | Docker Desktop + Compose |
 
+### Descargar Release
+
+**[Blockchain MUSIC v1.0.0](https://github.com/Mianjoy/Blockchain-Musical-/releases/tag/v1.0.0)** — ZIP portable + los dos `.exe`.
+
+1. Descarga `Blockchain-MUSIC-v1.0.0-portable.zip` y descomprímelo.
+2. `launchers\install-dependencies.bat` (Node + npm).
+3. Docker Desktop en verde → `Blockchain MUSIC - Fabric.exe` → `Blockchain MUSIC.exe`.
+4. UI: http://localhost:3001
+
 ---
 
 ## Tabla de contenidos

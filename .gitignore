@@ -41,3 +41,8 @@ network/**/music-royalty.tar.gz
 .idea/
 .vscode/
 *.swp
+
+# Release artifacts (ZIP uploaded to GitHub Releases, not committed)
+packaging/release/*.zip
+!packaging/release/RELEASE_NOTES_*.md
+
